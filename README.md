@@ -4,7 +4,7 @@
 
 ## 動作環境
 
-- Node.js 20以上
+- Node.js 22以上（vitest/jsdomがNode 20では動作しないため）
 - npm
 
 ## セットアップ

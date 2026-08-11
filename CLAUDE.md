@@ -17,7 +17,7 @@
 - テスト: Vitest + React Testing Library
 - Lint/Format: ESLint + Prettier
 - インフラ: GitHub Pages + GitHub Actions
-- パッケージマネージャ: npm（Node 20+）
+- パッケージマネージャ: npm（Node 22+。vitest/jsdomの依存undiciがNode 20では動作しないため）
 
 ## ディレクトリ構成方針
 
