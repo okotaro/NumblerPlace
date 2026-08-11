@@ -4,6 +4,7 @@ import type { Board as BoardType, Position } from '../types'
 type BoardProps = {
   board: BoardType
   selected: Position | null
+  errorCells: Position[]
   onSelectCell: (position: Position) => void
 }
 
@@ -30,7 +31,7 @@ function borderClassName(position: Position): string {
   return classes.join(' ')
 }
 
-export function Board({ board, selected, onSelectCell }: BoardProps) {
+export function Board({ board, selected, errorCells, onSelectCell }: BoardProps) {
   return (
     <div className="grid aspect-square w-full grid-cols-9 grid-rows-9 border-2 border-gray-700">
       {board.map((row, rowIndex) =>
@@ -42,6 +43,10 @@ export function Board({ board, selected, onSelectCell }: BoardProps) {
             selected.col === colIndex
           const isRelated =
             selected !== null && isRelatedCell(position, selected)
+          const isError = errorCells.some(
+            (errorPosition) =>
+              errorPosition.row === rowIndex && errorPosition.col === colIndex,
+          )
 
           return (
             <Cell
@@ -49,6 +54,7 @@ export function Board({ board, selected, onSelectCell }: BoardProps) {
               cell={cell}
               isSelected={isSelected}
               isRelated={isRelated}
+              isError={isError}
               onSelect={() => onSelectCell(position)}
               className={borderClassName(position)}
             />

@@ -28,6 +28,7 @@ describe('Cell 表示', () => {
         cell={makeCell()}
         isSelected={false}
         isRelated={false}
+        isError={false}
         onSelect={() => {}}
       />,
     )
@@ -43,6 +44,7 @@ describe('Cell 表示', () => {
         cell={makeCell({ value: 6 })}
         isSelected={false}
         isRelated={false}
+        isError={false}
         onSelect={() => {}}
       />,
     )
@@ -56,6 +58,7 @@ describe('Cell 表示', () => {
         cell={makeCell({ value: 6, isGiven: true })}
         isSelected={false}
         isRelated={false}
+        isError={false}
         onSelect={() => {}}
       />,
     )
@@ -70,6 +73,7 @@ describe('Cell 表示', () => {
         cell={makeCell({ value: 6, memos: makeMemos({ 1: 'candidate' }) })}
         isSelected={false}
         isRelated={false}
+        isError={false}
         onSelect={() => {}}
       />,
     )
@@ -86,6 +90,7 @@ describe('Cell 表示', () => {
         })}
         isSelected={false}
         isRelated={false}
+        isError={false}
         onSelect={() => {}}
       />,
     )
@@ -100,6 +105,7 @@ describe('Cell 表示', () => {
         cell={makeCell({ memos: makeMemos({ 5: 'notCandidate' }) })}
         isSelected={false}
         isRelated={false}
+        isError={false}
         onSelect={() => {}}
       />,
     )
@@ -115,6 +121,7 @@ describe('Cell 選択・関連ハイライト', () => {
         cell={makeCell()}
         isSelected={true}
         isRelated={false}
+        isError={false}
         onSelect={() => {}}
       />,
     )
@@ -128,6 +135,7 @@ describe('Cell 選択・関連ハイライト', () => {
         cell={makeCell()}
         isSelected={false}
         isRelated={true}
+        isError={false}
         onSelect={() => {}}
       />,
     )
@@ -143,6 +151,7 @@ describe('Cell 選択・関連ハイライト', () => {
         cell={makeCell()}
         isSelected={false}
         isRelated={false}
+        isError={false}
         onSelect={() => {}}
       />,
     )
@@ -150,6 +159,36 @@ describe('Cell 選択・関連ハイライト', () => {
     const button = screen.getByRole('button')
     expect(button).not.toHaveAttribute('data-selected')
     expect(button).not.toHaveAttribute('data-related')
+  })
+})
+
+describe('Cell エラー表示', () => {
+  it('isError=trueのときエラースタイルが付く', () => {
+    render(
+      <Cell
+        cell={makeCell({ value: 6 })}
+        isSelected={false}
+        isRelated={false}
+        isError={true}
+        onSelect={() => {}}
+      />,
+    )
+
+    expect(screen.getByRole('button')).toHaveAttribute('data-error', 'true')
+  })
+
+  it('isError=falseのときエラースタイルは付かない', () => {
+    render(
+      <Cell
+        cell={makeCell({ value: 6 })}
+        isSelected={false}
+        isRelated={false}
+        isError={false}
+        onSelect={() => {}}
+      />,
+    )
+
+    expect(screen.getByRole('button')).not.toHaveAttribute('data-error')
   })
 })
 
@@ -161,6 +200,7 @@ describe('Cell 操作', () => {
         cell={makeCell()}
         isSelected={false}
         isRelated={false}
+        isError={false}
         onSelect={onSelect}
       />,
     )
@@ -177,6 +217,7 @@ describe('Cell 操作', () => {
         cell={makeCell({ value: 6, isGiven: true })}
         isSelected={false}
         isRelated={false}
+        isError={false}
         onSelect={onSelect}
       />,
     )

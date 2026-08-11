@@ -22,6 +22,13 @@
 | 8   | 関連マス（選択マスと同じ行・列・ブロック）には関連スタイルが付く | `isRelated: true`                       | `data-related="true"` が付与される（`data-selected`は付かない） |
 | 9   | 無関係のマスにはどちらのスタイルも付かない                       | `isSelected: false`, `isRelated: false` | `data-selected`・`data-related` がいずれも付かない              |
 
+## エラー表示（spec.md 8章・13章）
+
+| #   | ケース                                 | 前提・入力      | 期待される結果                       |
+| --- | --------------------------------------- | --------------- | ------------------------------------- |
+| 12  | isError=trueのときエラースタイルが付く | `isError: true` | `data-error="true"` が付与される      |
+| 13  | isError=falseのときエラースタイルは付かない | `isError: false` | `data-error` が付与されない       |
+
 ## 操作
 
 | #   | ケース                                                                 | 前提・入力      | 期待される結果           |

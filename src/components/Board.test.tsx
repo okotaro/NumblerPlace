@@ -20,7 +20,7 @@ function makeBoard(): BoardType {
 describe('Board 描画', () => {
   it('81マス分のセルが描画される', () => {
     render(
-      <Board board={makeBoard()} selected={null} onSelectCell={() => {}} />,
+      <Board board={makeBoard()} selected={null} errorCells={[]} onSelectCell={() => {}} />,
     )
 
     expect(screen.getAllByRole('button')).toHaveLength(81)
@@ -30,7 +30,7 @@ describe('Board 描画', () => {
 describe('Board 選択・関連ハイライト', () => {
   it('selectedがnullのときはどのマスにも選択・関連スタイルが付かない', () => {
     render(
-      <Board board={makeBoard()} selected={null} onSelectCell={() => {}} />,
+      <Board board={makeBoard()} selected={null} errorCells={[]} onSelectCell={() => {}} />,
     )
 
     screen.getAllByRole('button').forEach((button) => {
@@ -43,6 +43,7 @@ describe('Board 選択・関連ハイライト', () => {
     render(
       <Board
         board={makeBoard()}
+        errorCells={[]}
         selected={{ row: 4, col: 4 }}
         onSelectCell={() => {}}
       />,
@@ -60,6 +61,7 @@ describe('Board 選択・関連ハイライト', () => {
     render(
       <Board
         board={makeBoard()}
+        errorCells={[]}
         selected={{ row: 4, col: 4 }}
         onSelectCell={() => {}}
       />,
@@ -80,6 +82,7 @@ describe('Board 選択・関連ハイライト', () => {
     render(
       <Board
         board={makeBoard()}
+        errorCells={[]}
         selected={{ row: 4, col: 4 }}
         onSelectCell={() => {}}
       />,
@@ -100,6 +103,7 @@ describe('Board 選択・関連ハイライト', () => {
     render(
       <Board
         board={makeBoard()}
+        errorCells={[]}
         selected={{ row: 4, col: 4 }}
         onSelectCell={() => {}}
       />,
@@ -122,6 +126,7 @@ describe('Board 選択・関連ハイライト', () => {
     render(
       <Board
         board={makeBoard()}
+        errorCells={[]}
         selected={{ row: 0, col: 0 }}
         onSelectCell={() => {}}
       />,
@@ -132,11 +137,44 @@ describe('Board 選択・関連ハイライト', () => {
   })
 })
 
+describe('Board エラー表示', () => {
+  it('errorCellsで指定した位置のマスにのみエラースタイルが付く', () => {
+    render(
+      <Board
+        board={makeBoard()}
+        selected={null}
+        errorCells={[{ row: 1, col: 2 }]}
+        onSelectCell={() => {}}
+      />,
+    )
+
+    const buttons = screen.getAllByRole('button')
+    const errorButtons = buttons.filter((b) => b.hasAttribute('data-error'))
+    expect(errorButtons).toHaveLength(1)
+    expect(errorButtons[0]).toBe(buttons[1 * 9 + 2])
+  })
+
+  it('errorCellsが空配列のときはどのマスにもエラースタイルが付かない', () => {
+    render(
+      <Board
+        board={makeBoard()}
+        selected={null}
+        errorCells={[]}
+        onSelectCell={() => {}}
+      />,
+    )
+
+    screen.getAllByRole('button').forEach((button) => {
+      expect(button).not.toHaveAttribute('data-error')
+    })
+  })
+})
+
 describe('Board 操作', () => {
   it('マスをクリックするとonSelectCellがそのマスの位置で呼ばれる', async () => {
     const onSelectCell = vi.fn()
     render(
-      <Board board={makeBoard()} selected={null} onSelectCell={onSelectCell} />,
+      <Board board={makeBoard()} selected={null} errorCells={[]} onSelectCell={onSelectCell} />,
     )
 
     const buttons = screen.getAllByRole('button')

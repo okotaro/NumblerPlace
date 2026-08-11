@@ -4,6 +4,7 @@ type CellProps = {
   cell: CellType
   isSelected: boolean
   isRelated: boolean
+  isError: boolean
   onSelect: () => void
   className?: string
 }
@@ -14,6 +15,7 @@ export function Cell({
   cell,
   isSelected,
   isRelated,
+  isError,
   onSelect,
   className,
 }: CellProps) {
@@ -24,10 +26,19 @@ export function Cell({
       data-given={cell.isGiven || undefined}
       data-selected={isSelected || undefined}
       data-related={isRelated || undefined}
-      className={`flex aspect-square w-full items-center justify-center border border-gray-300 text-lg data-[given]:bg-gray-100 data-[given]:font-bold data-[given]:text-gray-700 data-[related]:bg-blue-100 data-[selected]:bg-blue-300 ${className ?? ''}`}
+      data-error={isError || undefined}
+      className={`flex aspect-square w-full items-center justify-center border border-gray-300 text-lg data-[given]:bg-gray-100 data-[given]:font-bold data-[given]:text-gray-700 data-[related]:bg-blue-100 data-[selected]:bg-blue-300 data-[error]:!bg-red-200 ${className ?? ''}`}
     >
       {cell.value !== null ? (
-        <span className={cell.isGiven ? 'text-gray-700' : 'text-blue-700'}>
+        <span
+          className={
+            isError
+              ? 'text-red-700'
+              : cell.isGiven
+                ? 'text-gray-700'
+                : 'text-blue-700'
+          }
+        >
           {cell.value}
         </span>
       ) : (
