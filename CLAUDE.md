@@ -4,12 +4,14 @@
 
 ## プロジェクト概要
 
-数独（ナンバープレース）のWebアプリ。PCブラウザで9x9盤面を操作し、解答・候補メモ・非候補メモを入力しながらパズルを解く。GitHub Pagesで公開する。
+ナンバープレースのWebアプリ。PCブラウザで9x9盤面を操作し、解答・候補メモ・非候補メモを入力しながらパズルを解く。GitHub Pagesで公開する。
+
+「数独」および英語表記の「SUDOKU」はいずれも登録商標のため、我々がコントロールできる範囲の文言（プロジェクトの呼称・コード識別子・ドキュメントの説明文）では使用しない（「ナンバープレース」/ `numberPlace` 系の名称に統一する）。外部ライブラリのパッケージ名（例: `sudoku-core`）はコントロール対象外であり、事実として参照するのは問題ない。
 
 ## 技術スタック
 
 - フロントエンド: Vite + React (TypeScript) + Tailwind CSS
-- ロジック層: `src/services/sudokuService.ts`
+- ロジック層: `src/services/numberPlaceService.ts`
   - フェーズ1: npmライブラリ（想定 `sudoku-core`）をラップ
   - フェーズ3: バックトラッキング法による自作アルゴリズムに差し替え（`docs/roadmap.md` 参照）
 - テスト: Vitest + React Testing Library
@@ -22,9 +24,9 @@
 ```
 src/
   components/     # Reactコンポーネント（Board, Cell, NumberPad, Controls 等）
-  hooks/          # カスタムフック（useSudokuGame 等の状態管理ロジック）
+  hooks/          # カスタムフック（useNumberPlaceGame 等の状態管理ロジック）
   services/
-    sudokuService.ts   # 数独ロジックの唯一の窓口
+    numberPlaceService.ts   # パズルロジックの唯一の窓口
   types/          # 共有の型定義（Cell, Board, GameState 等）
   utils/          # 汎用ユーティリティ（localStorage操作など）
 docs/
@@ -36,18 +38,18 @@ docs/
 
 ## アーキテクチャ上の必須ルール
 
-**UIコンポーネント（`src/components/`, `src/hooks/`）は `src/services/sudokuService.ts` が公開する関数・型のみに依存し、外部ライブラリ（sudoku-core等）や自作アルゴリズムの型・実装を直接importしてはならない。**
+**UIコンポーネント（`src/components/`, `src/hooks/`）は `src/services/numberPlaceService.ts` が公開する関数・型のみに依存し、外部ライブラリ（sudoku-core等）や自作アルゴリズムの型・実装を直接importしてはならない。**
 
-理由: `docs/roadmap.md` フェーズ3で `sudokuService.ts` の内部実装を自作バックトラッキングアルゴリズムに差し替える際、UI層のコードを一切変更しないことが完了条件になっている。この境界を破るとフェーズ3の作業がUI側の改修を伴ってしまう。
+理由: `docs/roadmap.md` フェーズ3で `numberPlaceService.ts` の内部実装を自作バックトラッキングアルゴリズムに差し替える際、UI層のコードを一切変更しないことが完了条件になっている。この境界を破るとフェーズ3の作業がUI側の改修を伴ってしまう。
 
-`sudokuService.ts` の公開インターフェースを変更する必要が生じた場合は、先に `docs/spec.md` 12章を更新してから実装すること。
+`numberPlaceService.ts` の公開インターフェースを変更する必要が生じた場合は、先に `docs/spec.md` 12章を更新してから実装すること。
 
 ## TDDの運用
 
 - 本プロジェクトはTDD（テスト駆動開発）を採用する。新しいロジック・コンポーネントを追加する際は、失敗するテストを先に書いてから実装する（Red → Green → Refactor）。
 - テストツール: Vitest + React Testing Library。実行は `npm test`。
-- ロジック層（`sudokuService.ts` とその内部実装）はユニットテストで、UIの主要フロー（マス選択→入力→Check→クリアなど）は結合テストでカバーする。
-- フェーズ1で書いた `sudokuService.ts` に対するテストは、フェーズ3で内部実装を差し替えた後も無修正で通ることを目標にする。これがフェーズ3の受け入れ基準そのものになる。
+- ロジック層（`numberPlaceService.ts` とその内部実装）はユニットテストで、UIの主要フロー（マス選択→入力→Check→クリアなど）は結合テストでカバーする。
+- フェーズ1で書いた `numberPlaceService.ts` に対するテストは、フェーズ3で内部実装を差し替えた後も無修正で通ることを目標にする。これがフェーズ3の受け入れ基準そのものになる。
 
 ## コーディング規約
 
