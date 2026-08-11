@@ -23,4 +23,15 @@ describe('NumberPad 表示・操作', () => {
     expect(onNumberClick).toHaveBeenCalledTimes(1)
     expect(onNumberClick).toHaveBeenCalledWith(5)
   })
+
+  it('数字ボタンは視認性向上のため拡大・太字スタイルを持つ', () => {
+    render(<NumberPad onNumberClick={() => {}} />)
+
+    for (let n = 1; n <= 9; n++) {
+      expect(screen.getByRole('button', { name: String(n) })).toHaveClass(
+        'text-2xl',
+        'font-bold',
+      )
+    }
+  })
 })
