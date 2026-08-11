@@ -1,0 +1,32 @@
+name: Claude Plan
+
+on:
+  issues:
+    types: [opened, assigned]
+  issue_comment:
+    types: [created]
+
+jobs:
+  plan:
+    if: >
+      (github.event_name == 'issues' && github.event.action == 'assigned') ||
+      (github.event_name == 'issues' && github.event.action == 'opened' && contains(github.event.issue.body, '@claude 計画して')) ||
+      (github.event_name == 'issue_comment' && !github.event.issue.pull_request && contains(github.event.comment.body, '@claude 計画して'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          trigger_phrase: "@claude 計画して"
+          assignee_trigger: "claude"
+          claude_args: |
+            --allowedTools Read,Grep,Glob
+            --max-turns 15
+            --append-system-prompt "あなたはこのIssueの実装計画を立てる役割です。ファイルの変更・コミット・ブランチ作成・PR作成は一切行わないこと（ツール自体が許可されていません）。要件が曖昧な場合は計画を出さずに質問をコメントしてください。要件が明確な場合は、変更対象ファイル・実装アプローチ・テスト方針（本プロジェクトはTDD必須。docs/spec.mdやCLAUDE.mdの規約に従うこと）をまとめた計画をコメントし、最後に必ず「承認する場合は `@claude 実装して` とコメントしてください」という一文を添えてください。"

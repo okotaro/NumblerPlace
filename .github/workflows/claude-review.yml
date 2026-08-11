@@ -1,0 +1,30 @@
+name: Claude Review
+
+on:
+  pull_request_review_comment:
+    types: [created]
+  issue_comment:
+    types: [created]
+
+jobs:
+  review:
+    if: >
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude レビューして')) ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '@claude レビューして'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          trigger_phrase: "@claude レビューして"
+          claude_args: |
+            --allowedTools Read,Grep,Glob
+            --append-system-prompt "あなたはこのプルリクエストのレビュー担当です。ファイルの変更は一切行わないこと（ツール自体が許可されていません）。トリガーフレーズ以降のテキストがあれば、それをレビュー観点として扱い、その観点を中心にPRの差分をレビューしてコメントしてください。観点の指定がなければ、CLAUDE.mdの規約（アーキテクチャ上の必須ルール、TDD運用、コーディング規約）への準拠を中心に一般的な観点でレビューしてください。"
