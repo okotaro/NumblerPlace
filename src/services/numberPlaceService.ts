@@ -1,6 +1,6 @@
-import { generate, solve } from 'sudoku-core'
+import { generatePuzzleBoard, type Difficulty } from './backtracking/generator'
 
-export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'master'
+export type { Difficulty }
 
 export type PuzzleBoard = {
   given: (number | null)[][] // 9x9、初期ヒント（ヒントでないマスはnull）
@@ -9,39 +9,8 @@ export type PuzzleBoard = {
 
 export const DEFAULT_DIFFICULTY: Difficulty = 'medium'
 
-const BOARD_SIZE = 9
-
-function toGrid<T>(flat: T[]): T[][] {
-  const grid: T[][] = []
-  for (let row = 0; row < BOARD_SIZE; row++) {
-    grid.push(flat.slice(row * BOARD_SIZE, (row + 1) * BOARD_SIZE))
-  }
-  return grid
-}
-
 export function generatePuzzle(difficulty: Difficulty): PuzzleBoard {
-  const given = generate(difficulty)
-  const result = solve(given)
-
-  if (!result.solved || !result.board) {
-    throw new Error(
-      `sudoku-core failed to solve a puzzle it generated (difficulty=${difficulty})`,
-    )
-  }
-
-  const solutionFlat = result.board.map((value) => {
-    if (value === null) {
-      throw new Error(
-        `sudoku-core returned a solved board with an empty cell (difficulty=${difficulty})`,
-      )
-    }
-    return value
-  })
-
-  return {
-    given: toGrid(given),
-    solution: toGrid(solutionFlat),
-  }
+  return generatePuzzleBoard(difficulty)
 }
 
 export function isBoardComplete(userValues: (number | null)[][]): boolean {
