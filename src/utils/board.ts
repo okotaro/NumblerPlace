@@ -1,6 +1,6 @@
 import type { Board, Cell, MemoMark } from '../types'
 
-function createEmptyMemos(): Record<number, MemoMark> {
+export function createEmptyMemos(): Record<number, MemoMark> {
   const memos: Record<number, MemoMark> = {}
   for (let n = 1; n <= 9; n++) {
     memos[n] = 'none'

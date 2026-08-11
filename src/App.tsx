@@ -1,33 +1,32 @@
-import { useState } from 'react'
 import { Board } from './components/Board'
 import { Controls } from './components/Controls'
-import {
-  DEFAULT_DIFFICULTY,
-  generatePuzzle,
-} from './services/numberPlaceService'
-import { createInitialBoard } from './utils/board'
-import type { Board as BoardType, Position } from './types'
+import { useNumberPlaceGame } from './hooks/useNumberPlaceGame'
 
 function App() {
-  const [board] = useState<BoardType>(() =>
-    createInitialBoard(generatePuzzle(DEFAULT_DIFFICULTY).given),
-  )
-  const [selected, setSelected] = useState<Position | null>(null)
-  const [isMemoMode, setIsMemoMode] = useState(false)
+  const {
+    board,
+    selected,
+    isMemoMode,
+    selectCell,
+    toggleMemoMode,
+    inputNumber,
+    eraseSelectedCell,
+    newGame,
+  } = useNumberPlaceGame()
 
   return (
     <div className="flex min-h-svh items-center justify-center gap-8 bg-white p-8">
       <div className="w-full max-w-xl">
-        <Board board={board} selected={selected} onSelectCell={setSelected} />
+        <Board board={board} selected={selected} onSelectCell={selectCell} />
       </div>
       <Controls
         isMemoMode={isMemoMode}
-        onToggleMemoMode={() => setIsMemoMode((prev) => !prev)}
-        onNumberClick={() => {}}
+        onToggleMemoMode={toggleMemoMode}
+        onNumberClick={inputNumber}
         onUndo={() => {}}
-        onErase={() => {}}
+        onErase={eraseSelectedCell}
         onCheck={() => {}}
-        onNewGame={() => {}}
+        onNewGame={newGame}
       />
     </div>
   )
