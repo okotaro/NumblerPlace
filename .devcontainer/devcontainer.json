@@ -1,0 +1,4 @@
+{
+    "image": "mcr.microsoft.com/devcontainers/typescript-node",
+    "postCreateCommand": "bash -lc 'curl -fsSL https://claude.ai/install.sh | bash'"
+}
