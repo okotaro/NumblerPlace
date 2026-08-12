@@ -31,13 +31,13 @@ export function Cell({
     >
       {cell.value !== null ? (
         <span
-          className={
+          className={`text-2xl font-bold ${
             isError
               ? 'text-red-700'
               : cell.isGiven
                 ? 'text-gray-700'
                 : 'text-blue-700'
-          }
+          }`}
         >
           {cell.value}
         </span>
