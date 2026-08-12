@@ -47,3 +47,4 @@ npm run build          # 型チェック(tsc)を含む本番ビルド
 
 `main` ブランチへのpushでGitHub Actionsが自動的にビルドし、GitHub Pages（`https://okotaro.github.io/NumblerPlace/`）へ公開される（Lint・テストが通った場合のみ。詳細は `docs/roadmap.md` フェーズ2）。
 
+
