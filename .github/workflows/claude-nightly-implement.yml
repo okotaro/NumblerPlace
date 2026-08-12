@@ -1,0 +1,31 @@
+name: Claude Nightly Implement Trigger
+
+on:
+  schedule:
+    - cron: "7 19 * * *" # 4:07 JST
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Pick oldest labeled issue and trigger implement
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          issue=$(gh issue list --repo "$REPO" \
+            --label claude-auto-implement --state open \
+            --json number,createdAt \
+            --jq 'sort_by(.createdAt) | .[0].number')
+
+          if [ -z "$issue" ] || [ "$issue" = "null" ]; then
+            echo "対象Issueなし。スキップします。"
+            exit 0
+          fi
+
+          echo "対象Issue: #$issue"
+          gh issue edit "$issue" --repo "$REPO" --remove-label claude-auto-implement
+          gh issue comment "$issue" --repo "$REPO" --body "@claude 実装して"

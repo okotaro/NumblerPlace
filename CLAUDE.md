@@ -83,6 +83,10 @@ docs/
 1. Issueを起票する
 2. Issueを `claude` にアサイン、またはIssueに `@claude 計画して` とコメント（`claude-plan.yml` が読み取り専用で計画を立て、コメントする。要件が曖昧な場合は質問する）
 3. 計画に変更が必要なら再度 `@claude 計画して` でコメントする
-4. 計画を承認する場合はIssueに `@claude 実装して` とコメントする（`claude-implement.yml` がTDDでの実装・ブランチ作成・PR作成まで行う）
+4. 計画を承認する場合、次のいずれかで実装を開始する
+   - Issueに `@claude 実装して` とコメントする（`claude-implement.yml` がTDDでの実装・ブランチ作成・PR作成まで行う）
+   - すぐに実装させたくない場合はIssueに `claude-auto-implement` ラベルを付ける。`claude-nightly-implement.yml` が毎晩4:00 JST頃に、このラベルが付いた最も古いopen Issueを1件選び、ラベルを外した上で `@claude 実装して` を自動コメントする（1晩1件まで）。手動で `@claude 実装して` を実行した場合は、二重処理を避けるため `claude-auto-implement` ラベルが付いていれば外しておくこと
 5. PR上で `@claude レビューして <観点>` とコメントすると、`claude-review.yml` が指定観点でレビューコメントを付ける（ファイル変更はしない）
 6. マージはClaudeに行わせず、ユーザーがGitHub上で手動で行う（`main` はレビュー承認必須・CI必須のブランチ保護がかかっている）
+
+`claude-auto-implement` ラベルはリポジトリ側で事前に作成しておく必要がある（例: `gh label create claude-auto-implement --description "夜間バッチで自動実装トリガーする対象" --color <任意>`）。
