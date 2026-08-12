@@ -1,0 +1,24 @@
+name: 改善・機能要望
+description: 改善点や新機能の提案
+title: "[Improvement] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: motivation
+    attributes:
+      label: 背景・課題
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 提案内容
+    validations:
+      required: true
+  - type: textarea
+    id: spec-impact
+    attributes:
+      label: docs/spec.md への影響
+      description: numberPlaceService.ts の公開インターフェース変更を伴う場合は明記
+    validations:
+      required: false
