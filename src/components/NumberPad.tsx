@@ -12,7 +12,7 @@ export function NumberPad({ onNumberClick }: NumberPadProps) {
           key={n}
           type="button"
           onClick={() => onNumberClick(n)}
-          className="aspect-square rounded border border-gray-300 text-lg font-medium hover:bg-gray-100"
+          className="aspect-square rounded border border-gray-300 text-2xl font-bold hover:bg-gray-100"
         >
           {n}
         </button>
