@@ -25,5 +25,5 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           trigger_phrase: "@claude 実装して"
           claude_args: |
-            --allowedTools "Bash(npm ci:*),Bash(npm install:*),Bash(npm test:*),Bash(npm run lint:*)"
-            --append-system-prompt "このIssueに投稿済みの直近の計画コメント（Claudeによる計画）に従って実装してください。CLAUDE.mdのTDD運用（テスト仕様書作成→失敗するテストを書く→実装して通す→リファクタリング）に従うこと。実装後はこのIssue用のブランチを作成してpushし、このIssueを参照する（Closes #<issue番号> を含む）プルリクエストを作成すること。計画コメントが見当たらない、または計画が曖昧な場合は実装せずコメントで確認してください。"
+            --allowedTools "Bash(npm ci:*),Bash(npm install:*),Bash(npm test:*),Bash(npm run lint:*),mcp__github__create_pull_request"
+            --append-system-prompt "このIssueに投稿済みの直近の計画コメント（Claudeによる計画）に従って実装してください。CLAUDE.mdのTDD運用（テスト仕様書作成→失敗するテストを書く→実装して通す→リファクタリング）に従うこと。実装後はこのIssue用のブランチを作成してpushし、mcp__github__create_pull_request ツールを使って実際にプルリクエストを作成すること（base: main、head: 作成したブランチ、bodyにはこのIssueを参照する記述 Closes #<issue番号> を含める）。PR作成用リンクを貼るだけで済ませず、必ずツールを呼び出して実際にPRを作成すること。計画コメントが見当たらない、または計画が曖昧な場合は実装せずコメントで確認してください。"
