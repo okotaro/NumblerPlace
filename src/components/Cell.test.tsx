@@ -99,6 +99,20 @@ describe('Cell 表示', () => {
     expect(screen.getByText('9').tagName).not.toBe('S')
   })
 
+  it('解答値の表示は視認性向上のため拡大・太字スタイルを持つ', () => {
+    render(
+      <Cell
+        cell={makeCell({ value: 6 })}
+        isSelected={false}
+        isRelated={false}
+        isError={false}
+        onSelect={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('6')).toHaveClass('text-2xl', 'font-bold')
+  })
+
   it('非候補メモは3x3ミニグリッドの対応位置に取り消し線付きで表示される', () => {
     render(
       <Cell
