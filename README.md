@@ -45,4 +45,6 @@ npm run build          # 型チェック(tsc)を含む本番ビルド
 
 ## デプロイ
 
-`main` ブランチへのpushでGitHub Actionsが自動的にビルドし、GitHub Pages（`https://okotaro.github.io/NumblerPlace/`）へ公開される（Lint・テストが通った場合のみ。詳細は `docs/roadmap.md` フェーズ2）。
+`main` ブランチへのpushでGitHub Actions（`deploy.yml`）が自動的にビルドし、`gh-pages` ブランチへpublishする。GitHub Pagesはこのブランチをソースとして配信する（`https://okotaro.github.io/NumblerPlace/`、Lint・テストが通った場合のみ。詳細は `docs/roadmap.md` フェーズ2）。
+
+PRごとに `https://okotaro.github.io/NumblerPlace/pr-preview/pr-<PR番号>/` へ自動プレビューがデプロイされる（PRへのコメントでURLが通知され、クローズ時に自動削除される）。
