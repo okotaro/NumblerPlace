@@ -112,6 +112,20 @@ describe('Cell 表示', () => {
 
     expect(screen.getByText('5').tagName).toBe('S')
   })
+
+  it('解答値は視認性向上のための拡大・太字スタイルを持つ', () => {
+    render(
+      <Cell
+        cell={makeCell({ value: 6 })}
+        isSelected={false}
+        isRelated={false}
+        isError={false}
+        onSelect={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('6')).toHaveClass('text-2xl', 'font-bold')
+  })
 })
 
 describe('Cell 選択・関連ハイライト', () => {
