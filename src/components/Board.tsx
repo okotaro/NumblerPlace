@@ -20,6 +20,21 @@ function isRelatedCell(position: Position, selected: Position): boolean {
   return sameRow || sameCol || sameBlock
 }
 
+function isSameValueCell(
+  position: Position,
+  selected: Position,
+  board: BoardType,
+): boolean {
+  if (position.row === selected.row && position.col === selected.col) {
+    return false
+  }
+  const selectedValue = board[selected.row][selected.col].value
+  if (selectedValue === null) {
+    return false
+  }
+  return board[position.row][position.col].value === selectedValue
+}
+
 function borderClassName(position: Position): string {
   const classes: string[] = []
   if (position.col % 3 === 0 && position.col !== 0) {
@@ -47,6 +62,8 @@ export function Board({ board, selected, errorCells, onSelectCell }: BoardProps)
             (errorPosition) =>
               errorPosition.row === rowIndex && errorPosition.col === colIndex,
           )
+          const isSameValue =
+            selected !== null && isSameValueCell(position, selected, board)
 
           return (
             <Cell
@@ -55,6 +72,7 @@ export function Board({ board, selected, errorCells, onSelectCell }: BoardProps)
               isSelected={isSelected}
               isRelated={isRelated}
               isError={isError}
+              isSameValue={isSameValue}
               onSelect={() => onSelectCell(position)}
               className={borderClassName(position)}
             />

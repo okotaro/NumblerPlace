@@ -174,6 +174,39 @@ describe('Cell 選択・関連ハイライト', () => {
     expect(button).not.toHaveAttribute('data-selected')
     expect(button).not.toHaveAttribute('data-related')
   })
+
+  it('選択マスと同じ数字を持つマスには同値スタイルが付く', () => {
+    render(
+      <Cell
+        cell={makeCell()}
+        isSelected={false}
+        isRelated={false}
+        isError={false}
+        isSameValue={true}
+        onSelect={() => {}}
+      />,
+    )
+
+    expect(screen.getByRole('button')).toHaveAttribute(
+      'data-same-value',
+      'true',
+    )
+  })
+
+  it('同じ数字を持たないマスには同値スタイルが付かない', () => {
+    render(
+      <Cell
+        cell={makeCell()}
+        isSelected={false}
+        isRelated={false}
+        isError={false}
+        isSameValue={false}
+        onSelect={() => {}}
+      />,
+    )
+
+    expect(screen.getByRole('button')).not.toHaveAttribute('data-same-value')
+  })
 })
 
 describe('Cell エラー表示', () => {
