@@ -1,4 +1,4 @@
-name: Claude Nightly Implement Trigger
+name: Claude Nightly Implement
 
 on:
   schedule:
@@ -6,12 +6,21 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  trigger:
+  implement:
     runs-on: ubuntu-latest
     permissions:
+      contents: write
+      pull-requests: write
       issues: write
+      id-token: write
+      actions: read
     steps:
-      - name: Pick oldest labeled issue and trigger implement
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Pick oldest labeled issue
+        id: pick
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -23,9 +32,91 @@ jobs:
 
           if [ -z "$issue" ] || [ "$issue" = "null" ]; then
             echo "対象Issueなし。スキップします。"
+            echo "found=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           echo "対象Issue: #$issue"
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          echo "issue_number=$issue" >> "$GITHUB_OUTPUT"
+
           gh issue edit "$issue" --repo "$REPO" --remove-label claude-auto-implement
-          gh issue comment "$issue" --repo "$REPO" --body "@claude 実装して"
+          gh issue comment "$issue" --repo "$REPO" --body "🌙 夜間バッチが本Issueを自動実装対象として選定し、実装を開始しました（このコメント自体は何もトリガーしません。実装はこのワークフロー内で直接行われます）。"
+
+      - name: Fetch issue context
+        id: context
+        if: steps.pick.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          ISSUE: ${{ steps.pick.outputs.issue_number }}
+        run: |
+          delim="ISSUE_CTX_$(date +%s%N)_${RANDOM}"
+          {
+            echo "issue_text<<$delim"
+            gh issue view "$ISSUE" --repo "$REPO" \
+              --json number,title,body,url,comments \
+              --jq '
+                "Issue #\(.number): \(.title)\n" +
+                "URL: \(.url)\n\n" +
+                "## Issue本文\n\n" + (.body // "(本文なし)") + "\n\n" +
+                "## コメント一覧（古い順）\n\n" +
+                (
+                  if (.comments | length) == 0 then
+                    "(コメントなし)"
+                  else
+                    [.comments[] | "### \(.author.login) (\(.createdAt))\n\n\(.body)"] | join("\n\n---\n\n")
+                  end
+                )
+              '
+            echo "$delim"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create branch for implementation
+        id: branch
+        if: steps.pick.outputs.found == 'true'
+        env:
+          ISSUE: ${{ steps.pick.outputs.issue_number }}
+        run: |
+          branch="claude/issue-${ISSUE}-$(date -u +%Y%m%d-%H%M)"
+          git checkout -b "$branch"
+          echo "branch_name=$branch" >> "$GITHUB_OUTPUT"
+
+      - uses: anthropics/claude-code-action@v1
+        if: steps.pick.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            あなたはこのリポジトリの夜間自動実装バッチです。人間による `@claude 実装して` コメントではなく、
+            スケジュール実行から直接起動されているため、GitHub上のIssueコンテキストは自動取得されません。
+            以下に埋め込まれたテキストが、このタスクに関する情報の全てです。
+
+            リポジトリ: ${{ github.repository }}
+            対象Issue番号: ${{ steps.pick.outputs.issue_number }}
+            ベースブランチ: main
+            作業ブランチ: ${{ steps.branch.outputs.branch_name }}（既にcheckout済み。このブランチ上で作業すること）
+
+            --- Issue情報ここから ---
+            ${{ steps.context.outputs.issue_text }}
+            --- Issue情報ここまで ---
+
+            上記のコメント一覧の中から、直近の計画コメント（Claudeによる計画コメント。通常
+            「@claude 計画して」への返答として投稿されている）を探し、その計画に従って実装してください。
+            計画コメントが見当たらない、または計画の内容が曖昧で実装方針を確定できない場合は、
+            実装を行わずに `gh issue comment ${{ steps.pick.outputs.issue_number }} --body "..."` で
+            確認したい内容をコメントし、それ以上の作業をせず終了してください。
+
+            計画が明確な場合、CLAUDE.mdのTDD運用（テスト仕様書作成→失敗するテストを書く→実装して通す→
+            リファクタリング）に従って実装してください。
+
+            実装が完了したら:
+            1. `git add` / `git commit` で変更をコミットする（既に作業ブランチ上にいるので新規ブランチ作成は不要）
+            2. `git push origin ${{ steps.branch.outputs.branch_name }}` でpushする
+            3. `mcp__github__create_pull_request` ツールを実際に呼び出してPRを作成する
+               （base: main、head: ${{ steps.branch.outputs.branch_name }}、
+               bodyにはこのIssueを参照する記述 `Closes #${{ steps.pick.outputs.issue_number }}` を含める）
+               PR作成用リンクを貼るだけで済ませず、必ずツールを呼び出して実際にPRを作成すること。
+          claude_args: |
+            --allowedTools "Read,Glob,Grep,Edit,MultiEdit,Write,Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(npm ci:*),Bash(npm install:*),Bash(npm test:*),Bash(npm run lint:*),Bash(gh issue comment:*),mcp__github__create_pull_request"

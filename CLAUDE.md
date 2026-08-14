@@ -78,14 +78,14 @@ docs/
 
 ## Issue→PR運用フロー（GitHub Actions連携）
 
-`.github/workflows/claude-plan.yml` / `claude-implement.yml` / `claude-review.yml`（`anthropics/claude-code-action`）により、Issueベースの開発フローをGitHub上で運用する。ステージごとに明示的なトリガーフレーズを使い分け、各ジョブは目的外のツール（ファイル変更等）を持たない設計にしている。
+`.github/workflows/claude-plan.yml` / `claude-implement.yml` / `claude-review.yml` / `claude-nightly-implement.yml`（いずれも `anthropics/claude-code-action`）により、Issueベースの開発フローをGitHub上で運用する。ステージごとに明示的なトリガーフレーズを使い分け、各ジョブは目的外のツール（ファイル変更等）を持たない設計にしている。
 
 1. Issueを起票する
 2. Issueを `claude` にアサイン、またはIssueに `@claude 計画して` とコメント（`claude-plan.yml` が読み取り専用で計画を立て、コメントする。要件が曖昧な場合は質問する）
 3. 計画に変更が必要なら再度 `@claude 計画して` でコメントする
 4. 計画を承認する場合、次のいずれかで実装を開始する
    - Issueに `@claude 実装して` とコメントする（`claude-implement.yml` がTDDでの実装・ブランチ作成・PR作成まで行う）
-   - すぐに実装させたくない場合はIssueに `claude-auto-implement` ラベルを付ける。`claude-nightly-implement.yml` が毎晩4:00 JST頃に、このラベルが付いた最も古いopen Issueを1件選び、ラベルを外した上で `@claude 実装して` を自動コメントする（1晩1件まで）。手動で `@claude 実装して` を実行した場合は、二重処理を避けるため `claude-auto-implement` ラベルが付いていれば外しておくこと
+   - すぐに実装させたくない場合はIssueに `claude-auto-implement` ラベルを付ける。`claude-nightly-implement.yml` が毎晩4:00 JST頃に、このラベルが付いた最も古いopen Issueを1件選び、ラベルを外した上で夜間実行である旨がわかる記録用コメントを投稿し、同一ジョブ内で直接 `claude-code-action` を実行して実装・ブランチ作成・PR作成まで行う（1晩1件まで）。`claude-implement.yml`（`issue_comment` トリガー）は経由しない（`GITHUB_TOKEN` で作成したコメントは他ワークフローの起動トリガーにならないため）。手動で `@claude 実装して` を実行した場合は、二重処理を避けるため `claude-auto-implement` ラベルが付いていれば外しておくこと
 5. PR上で `@claude レビューして <観点>` とコメントすると、`claude-review.yml` が指定観点でレビューコメントを付ける（ファイル変更はしない）
 6. マージはClaudeに行わせず、ユーザーがGitHub上で手動で行う（`main` はレビュー承認必須・CI必須のブランチ保護がかかっている）
 
