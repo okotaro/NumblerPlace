@@ -74,6 +74,8 @@
 | 25  | 確定マス（ヒント）への入力・消しゴムは盤面を変化させないため履歴に積まれない | ヒントセルを選択し `inputNumber(n)` の後 `undo()`                                | 例外が発生せず、boardが変化しない（undo可能な履歴が増えていない）  |
 | 26  | newGameを呼ぶとUndo履歴もリセットされる                                     | `inputNumber(7)` の後 `newGame()`、その後 `undo()`                               | undo後もnewGame直後の盤面のまま変化しない                          |
 | 27  | マス選択・メモON/OFF切替は履歴に積まれない                                  | `inputNumber(7)` → 別マスを`selectCell` → `toggleMemoMode()` の後 `undo()` を1回 | 1回のundoで `inputNumber(7)` した内容が取り消される（2回分ではない）|
+| 51  | 誤答マスへの入力をUndoで取り消すと、そのマスのエラー表示が解除される         | 空マスに誤った値を入力 → `check()` → `undo()`                                     | そのマスの位置が `errorCells` に含まれない                          |
+| 52  | 無関係な操作のUndoでは、既存のエラー表示は解除されない                      | 誤答マスAに入力後 `check()` でAがエラーに → 別の空マスBに正しい値を入力 → `undo()`（Bの入力のみ取り消す） | Aの位置は依然として `errorCells` に含まれる                         |
 
 ## check（Checkボタン・エラー表示、spec.md 8章）
 
