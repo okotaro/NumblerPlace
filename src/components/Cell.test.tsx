@@ -126,6 +126,23 @@ describe('Cell 表示', () => {
 
     expect(screen.getByText('5').tagName).toBe('S')
   })
+
+  it('メモ数字は視認性向上のため通常時より大きいサイズ・太めのウェイトで表示される', () => {
+    render(
+      <Cell
+        cell={makeCell({
+          memos: makeMemos({ 1: 'candidate', 5: 'notCandidate' }),
+        })}
+        isSelected={false}
+        isRelated={false}
+        isError={false}
+        onSelect={() => {}}
+      />,
+    )
+
+    const memoContainer = screen.getByText('1').closest('.grid')
+    expect(memoContainer).toHaveClass('text-[0.7rem]', 'font-medium')
+  })
 })
 
 describe('Cell 選択・関連ハイライト', () => {

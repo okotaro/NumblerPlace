@@ -42,7 +42,7 @@ export function Cell({
           {cell.value}
         </span>
       ) : (
-        <div className="grid h-full w-full grid-cols-3 grid-rows-3 text-[0.6rem] leading-none text-gray-500">
+        <div className="grid h-full w-full grid-cols-3 grid-rows-3 text-[0.7rem] font-medium leading-none text-gray-500">
           {MEMO_POSITIONS.map((n) => (
             <span key={n} className="flex items-center justify-center">
               {cell.memos[n] === 'candidate' && n}
