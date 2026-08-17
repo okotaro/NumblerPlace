@@ -19,6 +19,11 @@
 | 5   | 選択マスと同じ列のマスには関連スタイルが付く（選択マス自身は除く）          | `selected: {row: 4, col: 4}`                 | 列4の他8マスに`data-related="true"`                                                |
 | 6   | 選択マスと同じ3x3ブロックのマスには関連スタイルが付く（選択マス自身は除く） | `selected: {row: 4, col: 4}`（中央ブロック） | 中央ブロック内の他8マスに`data-related="true"`                                     |
 | 7   | 行・列・ブロックいずれにも属さないマスには関連スタイルが付かない            | `selected: {row: 0, col: 0}`                 | (row=4, col=4)のように行・列・ブロックすべて異なるマスには`data-related`が付かない |
+| 12  | 選択マスに値がある場合、盤面内の同じ値を持つ他の全マスに同値スタイルが付く（Issue #3） | `selected: {row: 0, col: 0}`（値5）、他に値5のマスを行・列・ブロック外に配置 | 値5を持つ他の全マスに`data-same-value="true"`が付く                       |
+| 13  | 選択マス自身には同値スタイルが付かない（Issue #3）                         | `selected: {row: 0, col: 0}`（値5）          | (0,0)自身には`data-same-value`が付かない                                          |
+| 14  | 選択マスが未入力の場合はどのマスにも同値スタイルが付かない（Issue #3）      | `selected: {row: 0, col: 0}`（値null）       | すべてのマスに`data-same-value`が付かない                                         |
+| 15  | selectedがnullの場合はどのマスにも同値スタイルが付かない（Issue #3）        | `selected: null`                             | すべてのマスに`data-same-value`が付かない                                         |
+| 16  | 候補メモは同値判定に影響しない（値のみで判定、Issue #3）                    | `selected: {row: 0, col: 0}`（値5）、他マスに値なし＋候補メモ5 | 候補メモのみのマスには`data-same-value`が付かない                                 |
 
 ## エラー表示（spec.md 8章）
 
