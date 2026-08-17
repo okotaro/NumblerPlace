@@ -20,6 +20,20 @@ function findBlankCellPosition(
   throw new Error('no blank cell found')
 }
 
+function findAnotherBlankCellPosition(
+  board: ReturnType<typeof useNumberPlaceGame>['board'],
+  exclude: { row: number; col: number },
+) {
+  for (let row = 0; row < 9; row++) {
+    for (let col = 0; col < 9; col++) {
+      if (!board[row][col].isGiven && !(row === exclude.row && col === exclude.col)) {
+        return { row, col }
+      }
+    }
+  }
+  throw new Error('no second blank cell found')
+}
+
 function findGivenCellPosition(
   board: ReturnType<typeof useNumberPlaceGame>['board'],
 ) {
@@ -379,6 +393,43 @@ describe('useNumberPlaceGame undo', () => {
     act(() => result.current.undo())
 
     expect(result.current.board[blank.row][blank.col].value).toBeNull()
+  })
+
+  it('誤答マスへの入力をUndoで取り消すと、そのマスのエラー表示が解除される', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    const blank = findBlankCellPosition(result.current.board)
+    act(() => result.current.selectCell(blank))
+    const { wrongValue } = classifyValues(result, blank)
+    act(() => result.current.eraseSelectedCell())
+
+    act(() => result.current.inputNumber(wrongValue))
+    act(() => result.current.check())
+    expect(result.current.errorCells).toContainEqual(blank)
+
+    act(() => result.current.undo())
+
+    expect(result.current.errorCells).not.toContainEqual(blank)
+  })
+
+  it('無関係な操作のUndoでは、既存のエラー表示は解除されない', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    const blankA = findBlankCellPosition(result.current.board)
+    act(() => result.current.selectCell(blankA))
+    const { wrongValue: wrongA } = classifyValues(result, blankA)
+    act(() => result.current.eraseSelectedCell())
+    act(() => result.current.inputNumber(wrongA))
+    act(() => result.current.check())
+    expect(result.current.errorCells).toContainEqual(blankA)
+
+    const blankB = findAnotherBlankCellPosition(result.current.board, blankA)
+    act(() => result.current.selectCell(blankB))
+    const { correctValue: correctB } = classifyValues(result, blankB)
+    act(() => result.current.eraseSelectedCell())
+    act(() => result.current.inputNumber(correctB))
+
+    act(() => result.current.undo())
+
+    expect(result.current.errorCells).toContainEqual(blankA)
   })
 })
 
