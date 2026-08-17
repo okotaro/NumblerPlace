@@ -22,6 +22,8 @@
 | 7   | 選択中マスには選択スタイルが付く                                 | `isSelected: true`                      | `data-selected="true"` が付与される                             |
 | 8   | 関連マス（選択マスと同じ行・列・ブロック）には関連スタイルが付く | `isRelated: true`                       | `data-related="true"` が付与される（`data-selected`は付かない） |
 | 9   | 無関係のマスにはどちらのスタイルも付かない                       | `isSelected: false`, `isRelated: false` | `data-selected`・`data-related` がいずれも付かない              |
+| 15  | 選択マスと同じ数字を持つマスには同値スタイルが付く（Issue #3）   | `isSameValue: true`                     | `data-same-value="true"` が付与される                            |
+| 16  | 同じ数字を持たないマスには同値スタイルが付かない（Issue #3）     | `isSameValue: false`                    | `data-same-value` が付与されない                                 |
 
 ## エラー表示（spec.md 8章・13章）
 

@@ -135,6 +135,96 @@ describe('Board 選択・関連ハイライト', () => {
     const buttons = screen.getAllByRole('button')
     expect(buttons[4 * 9 + 4]).not.toHaveAttribute('data-related')
   })
+
+  it('選択マスに値がある場合、盤面内の同じ値を持つ他の全マスに同値スタイルが付く', () => {
+    const board = makeBoard()
+    board[0][0].value = 5
+    board[8][8].value = 5
+    board[3][6].value = 5
+    board[1][1].value = 6
+
+    render(
+      <Board
+        board={board}
+        errorCells={[]}
+        selected={{ row: 0, col: 0 }}
+        onSelectCell={() => {}}
+      />,
+    )
+
+    const buttons = screen.getAllByRole('button')
+    expect(buttons[8 * 9 + 8]).toHaveAttribute('data-same-value', 'true')
+    expect(buttons[3 * 9 + 6]).toHaveAttribute('data-same-value', 'true')
+    expect(buttons[1 * 9 + 1]).not.toHaveAttribute('data-same-value')
+  })
+
+  it('選択マス自身には同値スタイルが付かない', () => {
+    const board = makeBoard()
+    board[0][0].value = 5
+
+    render(
+      <Board
+        board={board}
+        errorCells={[]}
+        selected={{ row: 0, col: 0 }}
+        onSelectCell={() => {}}
+      />,
+    )
+
+    const buttons = screen.getAllByRole('button')
+    expect(buttons[0]).not.toHaveAttribute('data-same-value')
+  })
+
+  it('選択マスが未入力の場合はどのマスにも同値スタイルが付かない', () => {
+    const board = makeBoard()
+    board[1][1].value = 5
+    board[2][2].value = 5
+
+    render(
+      <Board
+        board={board}
+        errorCells={[]}
+        selected={{ row: 0, col: 0 }}
+        onSelectCell={() => {}}
+      />,
+    )
+
+    screen.getAllByRole('button').forEach((button) => {
+      expect(button).not.toHaveAttribute('data-same-value')
+    })
+  })
+
+  it('selectedがnullの場合はどのマスにも同値スタイルが付かない', () => {
+    const board = makeBoard()
+    board[1][1].value = 5
+    board[2][2].value = 5
+
+    render(
+      <Board board={board} errorCells={[]} selected={null} onSelectCell={() => {}} />,
+    )
+
+    screen.getAllByRole('button').forEach((button) => {
+      expect(button).not.toHaveAttribute('data-same-value')
+    })
+  })
+
+  it('候補メモは同値判定に影響しない', () => {
+    const board = makeBoard()
+    board[0][0].value = 5
+    board[1][1].memos[5] = 'candidate'
+
+    render(
+      <Board
+        board={board}
+        errorCells={[]}
+        selected={{ row: 0, col: 0 }}
+        onSelectCell={() => {}}
+      />,
+    )
+
+    const buttons = screen.getAllByRole('button')
+    expect(buttons[1 * 9 + 1]).not.toHaveAttribute('data-same-value')
+  })
 })
 
 describe('Board エラー表示', () => {
