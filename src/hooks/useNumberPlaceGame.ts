@@ -185,10 +185,18 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case 'UNDO': {
       if (state.history.length === 0) return state
       const previousBoard = state.history[state.history.length - 1]
+      const userValues = previousBoard.map((row) =>
+        row.map((cell) => cell.value),
+      )
+      const errors = checkAnswers(userValues, state.solution)
+      const errorCells = state.errorCells.filter(
+        (position) => errors[position.row][position.col],
+      )
       return withClearedStatus({
         ...state,
         board: previousBoard,
         history: state.history.slice(0, -1),
+        errorCells,
       })
     }
     case 'NEW_GAME':
