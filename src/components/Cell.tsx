@@ -45,11 +45,13 @@ export function Cell({
           {cell.value}
         </span>
       ) : (
-        <div className="grid h-full w-full grid-cols-3 grid-rows-3 text-[0.6rem] leading-none text-gray-500">
+        <div className="grid h-full w-full grid-cols-3 grid-rows-3 text-sm font-medium leading-none text-gray-500">
           {MEMO_POSITIONS.map((n) => (
             <span key={n} className="flex items-center justify-center">
               {cell.memos[n] === 'candidate' && n}
-              {cell.memos[n] === 'notCandidate' && <s>{n}</s>}
+              {cell.memos[n] === 'notCandidate' && (
+                <s className="decoration-2 decoration-red-500">{n}</s>
+              )}
             </span>
           ))}
         </div>

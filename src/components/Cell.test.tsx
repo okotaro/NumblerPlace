@@ -126,6 +126,40 @@ describe('Cell 表示', () => {
 
     expect(screen.getByText('5').tagName).toBe('S')
   })
+
+  it('メモ数字は視認性向上のため、通常時より大きいサイズ・太めのウェイトで表示される', () => {
+    render(
+      <Cell
+        cell={makeCell({ memos: makeMemos({ 1: 'candidate' }) })}
+        isSelected={false}
+        isRelated={false}
+        isError={false}
+        onSelect={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('1').parentElement).toHaveClass(
+      'text-sm',
+      'font-medium',
+    )
+  })
+
+  it('非候補メモの取り消し線は数字のストロークと区別しやすいよう強調されたスタイルを持つ', () => {
+    render(
+      <Cell
+        cell={makeCell({ memos: makeMemos({ 5: 'notCandidate' }) })}
+        isSelected={false}
+        isRelated={false}
+        isError={false}
+        onSelect={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('5')).toHaveClass(
+      'decoration-2',
+      'decoration-red-500',
+    )
+  })
 })
 
 describe('Cell 選択・関連ハイライト', () => {
