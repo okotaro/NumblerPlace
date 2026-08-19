@@ -1,13 +1,13 @@
 # storage.ts テスト仕様書
 
 対象: `src/utils/storage.ts`
-関連仕様: `docs/spec.md` 10章
+関連仕様: `docs/spec.md` 10章・5.6章・7章
 
 ## saveGameState / loadGameState（保存・復元の往復）
 
 | #   | ケース                                                                     | 前提・入力                                              | 期待される結果                                                     |
 | --- | ----------------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------ |
-| 1   | saveGameStateで保存した内容がloadGameStateでそのまま復元できる               | board・solution・selected・isMemoMode・isClearedを含む状態を保存 | `loadGameState()` の戻り値が保存した内容と一致する                       |
+| 1   | saveGameStateで保存した内容がloadGameStateでそのまま復元できる               | board・solution・selected・isMemoMode・isCleared・difficultyを含む状態を保存 | `loadGameState()` の戻り値が保存した内容と一致する                       |
 | 2   | selectedがnullの状態でも保存・復元できる                                     | `selected: null` で保存                                     | `loadGameState()` の `selected` が `null`                                |
 
 ## loadGameState（未保存・壊れたデータのフォールバック）
@@ -18,6 +18,8 @@
 | 4   | 壊れたJSON（パース不能）が保存されている場合はnullを返す           | 保存キーに不正な文字列をセット                            | `loadGameState()` が `null` を返す      |
 | 5   | スキーマとして不正な形（必須フィールド欠落）の場合はnullを返す     | 保存キーに `{}` のような不完全なJSONをセット               | `loadGameState()` が `null` を返す      |
 | 6   | boardのサイズが9x9でない場合はnullを返す                          | `board` が8行しかないデータを保存キーにセット              | `loadGameState()` が `null` を返す      |
+| 8   | difficultyフィールドが欠落している場合（旧v1形式）はnullを返す    | `difficulty` を除いたデータを保存キーにセット              | `loadGameState()` が `null` を返す      |
+| 9   | difficultyが不正な値の場合はnullを返す                            | `difficulty: 'invalid'` を保存キーにセット                 | `loadGameState()` が `null` を返す      |
 
 ## clearGameState
 

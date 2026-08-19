@@ -7,7 +7,7 @@ import {
   type Difficulty,
   type PuzzleBoard,
 } from '../services/numberPlaceService'
-import { createEmptyMemos, createInitialBoard } from '../utils/board'
+import { createEmptyMemos, createInitialBoard, hasProgress } from '../utils/board'
 import { loadGameState, saveGameState } from '../utils/storage'
 import type { Board, MemoMark, Position } from '../types'
 
@@ -19,6 +19,8 @@ type GameState = {
   history: Board[]
   errorCells: Position[]
   isCleared: boolean
+  difficulty: Difficulty
+  newGameModal: { isOpen: boolean; difficulty: Difficulty }
 }
 
 export type Direction = 'up' | 'down' | 'left' | 'right'
@@ -38,9 +40,12 @@ type GameAction =
   | { type: 'ERASE_SELECTED_CELL' }
   | { type: 'UNDO' }
   | { type: 'CHECK' }
-  | { type: 'NEW_GAME'; puzzle: PuzzleBoard }
+  | { type: 'NEW_GAME'; puzzle: PuzzleBoard; difficulty: Difficulty }
+  | { type: 'OPEN_NEW_GAME_MODAL' }
+  | { type: 'CLOSE_NEW_GAME_MODAL' }
+  | { type: 'SELECT_NEW_GAME_DIFFICULTY'; difficulty: Difficulty }
 
-function createGameState(puzzle: PuzzleBoard): GameState {
+function createGameState(puzzle: PuzzleBoard, difficulty: Difficulty): GameState {
   return {
     board: createInitialBoard(puzzle.given),
     solution: puzzle.solution,
@@ -49,6 +54,8 @@ function createGameState(puzzle: PuzzleBoard): GameState {
     history: [],
     errorCells: [],
     isCleared: false,
+    difficulty,
+    newGameModal: { isOpen: false, difficulty },
   }
 }
 
@@ -63,9 +70,11 @@ function createInitialGameState(difficulty: Difficulty): GameState {
       history: [],
       errorCells: [],
       isCleared: persisted.isCleared,
+      difficulty: persisted.difficulty,
+      newGameModal: { isOpen: false, difficulty: persisted.difficulty },
     }
   }
-  return createGameState(generatePuzzle(difficulty))
+  return createGameState(generatePuzzle(difficulty), difficulty)
 }
 
 function isSamePosition(a: Position, b: Position): boolean {
@@ -200,7 +209,19 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       })
     }
     case 'NEW_GAME':
-      return createGameState(action.puzzle)
+      return createGameState(action.puzzle, action.difficulty)
+    case 'OPEN_NEW_GAME_MODAL':
+      return {
+        ...state,
+        newGameModal: { isOpen: true, difficulty: state.difficulty },
+      }
+    case 'CLOSE_NEW_GAME_MODAL':
+      return { ...state, newGameModal: { ...state.newGameModal, isOpen: false } }
+    case 'SELECT_NEW_GAME_DIFFICULTY':
+      return {
+        ...state,
+        newGameModal: { ...state.newGameModal, difficulty: action.difficulty },
+      }
     default:
       return state
   }
@@ -222,8 +243,16 @@ export function useNumberPlaceGame(
       selected: state.selected,
       isMemoMode: state.isMemoMode,
       isCleared: state.isCleared,
+      difficulty: state.difficulty,
     })
-  }, [state.board, state.solution, state.selected, state.isMemoMode, state.isCleared])
+  }, [
+    state.board,
+    state.solution,
+    state.selected,
+    state.isMemoMode,
+    state.isCleared,
+    state.difficulty,
+  ])
 
   return {
     board: state.board,
@@ -231,6 +260,7 @@ export function useNumberPlaceGame(
     isMemoMode: state.isMemoMode,
     errorCells: state.errorCells,
     isCleared: state.isCleared,
+    newGameModal: state.newGameModal,
     selectCell: (position: Position) =>
       dispatch({ type: 'SELECT_CELL', position }),
     moveSelection: (direction: Direction) =>
@@ -240,7 +270,22 @@ export function useNumberPlaceGame(
     eraseSelectedCell: () => dispatch({ type: 'ERASE_SELECTED_CELL' }),
     undo: () => dispatch({ type: 'UNDO' }),
     check: () => dispatch({ type: 'CHECK' }),
-    newGame: () =>
-      dispatch({ type: 'NEW_GAME', puzzle: generatePuzzle(difficulty) }),
+    openNewGame: () => dispatch({ type: 'OPEN_NEW_GAME_MODAL' }),
+    closeNewGame: () => dispatch({ type: 'CLOSE_NEW_GAME_MODAL' }),
+    selectNewGameDifficulty: (value: Difficulty) =>
+      dispatch({ type: 'SELECT_NEW_GAME_DIFFICULTY', difficulty: value }),
+    confirmNewGame: () => {
+      if (hasProgress(state.board) && !state.isCleared) {
+        if (!window.confirm('進行中の盤面があります。新しいゲームを開始しますか？')) {
+          return
+        }
+      }
+      const newDifficulty = state.newGameModal.difficulty
+      dispatch({
+        type: 'NEW_GAME',
+        puzzle: generatePuzzle(newDifficulty),
+        difficulty: newDifficulty,
+      })
+    },
   }
 }

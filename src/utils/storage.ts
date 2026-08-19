@@ -1,6 +1,7 @@
+import { DIFFICULTIES, type Difficulty } from '../services/numberPlaceService'
 import type { Board, Cell, MemoMark, Position } from '../types'
 
-export const STORAGE_KEY = 'numberplace:v1:gameState'
+export const STORAGE_KEY = 'numberplace:v2:gameState'
 
 export type PersistedGameState = {
   board: Board
@@ -8,6 +9,7 @@ export type PersistedGameState = {
   selected: Position | null
   isMemoMode: boolean
   isCleared: boolean
+  difficulty: Difficulty
 }
 
 export function saveGameState(state: PersistedGameState): void {
@@ -98,9 +100,13 @@ function isSolution(value: unknown): value is number[][] {
   )
 }
 
+function isDifficulty(value: unknown): value is Difficulty {
+  return DIFFICULTIES.includes(value as Difficulty)
+}
+
 function isPersistedGameState(value: unknown): value is PersistedGameState {
   if (typeof value !== 'object' || value === null) return false
-  const { board, solution, selected, isMemoMode, isCleared } =
+  const { board, solution, selected, isMemoMode, isCleared, difficulty } =
     value as Record<string, unknown>
 
   return (
@@ -108,6 +114,7 @@ function isPersistedGameState(value: unknown): value is PersistedGameState {
     isSolution(solution) &&
     (selected === null || isPosition(selected)) &&
     typeof isMemoMode === 'boolean' &&
-    typeof isCleared === 'boolean'
+    typeof isCleared === 'boolean' &&
+    isDifficulty(difficulty)
   )
 }

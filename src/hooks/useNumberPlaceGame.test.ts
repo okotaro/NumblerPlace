@@ -1,11 +1,21 @@
 import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useNumberPlaceGame } from './useNumberPlaceGame'
+import { DEFAULT_DIFFICULTY } from '../services/numberPlaceService'
 import { STORAGE_KEY, loadGameState } from '../utils/storage'
 
 beforeEach(() => {
   localStorage.clear()
 })
+
+function confirmNewGame(
+  result: { current: ReturnType<typeof useNumberPlaceGame> },
+) {
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+  act(() => result.current.openNewGame())
+  act(() => result.current.confirmNewGame())
+  confirmSpy.mockRestore()
+}
 
 function findBlankCellPosition(
   board: ReturnType<typeof useNumberPlaceGame>['board'],
@@ -366,13 +376,13 @@ describe('useNumberPlaceGame undo', () => {
     expect(result.current.board).toEqual(boardBefore)
   })
 
-  it('newGameを呼ぶとUndo履歴もリセットされる', () => {
+  it('New Game確定後はUndo履歴もリセットされる', () => {
     const { result } = renderHook(() => useNumberPlaceGame())
     const blank = findBlankCellPosition(result.current.board)
 
     act(() => result.current.selectCell(blank))
     act(() => result.current.inputNumber(7))
-    act(() => result.current.newGame())
+    confirmNewGame(result)
     const boardAfterNewGame = result.current.board
 
     act(() => result.current.undo())
@@ -540,7 +550,7 @@ describe('useNumberPlaceGame check', () => {
     expect(result.current.errorCells).not.toContainEqual(blank)
   })
 
-  it('newGameを呼ぶとerrorCellsがリセットされる', () => {
+  it('New Game確定後はerrorCellsがリセットされる', () => {
     const { result } = renderHook(() => useNumberPlaceGame())
     const blank = findBlankCellPosition(result.current.board)
     act(() => result.current.selectCell(blank))
@@ -549,7 +559,7 @@ describe('useNumberPlaceGame check', () => {
     act(() => result.current.check())
     expect(result.current.errorCells.length).toBeGreaterThan(0)
 
-    act(() => result.current.newGame())
+    confirmNewGame(result)
 
     expect(result.current.errorCells).toEqual([])
   })
@@ -623,13 +633,13 @@ describe('useNumberPlaceGame クリア自動検出', () => {
     expect(result.current.isCleared).toBe(false)
   })
 
-  it('newGameを呼ぶとisClearedがfalseにリセットされる', () => {
+  it('New Game確定後はisClearedがfalseにリセットされる', () => {
     const { result } = renderHook(() => useNumberPlaceGame())
     const blanks = findBlankCellPositions(result.current.board)
     blanks.forEach((position) => fillCorrectValue(result, position))
     expect(result.current.isCleared).toBe(true)
 
-    act(() => result.current.newGame())
+    confirmNewGame(result)
 
     expect(result.current.isCleared).toBe(false)
   })
@@ -673,17 +683,110 @@ describe('useNumberPlaceGame localStorageへの自動保存・復元', () => {
     result.current.board.forEach((row) => expect(row).toHaveLength(9))
   })
 
-  it('newGameを呼ぶと新しい盤面がlocalStorageに保存される', () => {
+  it('New Gameを確定すると新しい盤面がlocalStorageに保存される', () => {
     const { result } = renderHook(() => useNumberPlaceGame())
 
-    act(() => result.current.newGame())
+    confirmNewGame(result)
 
     const saved = loadGameState()
     expect(saved?.board).toEqual(result.current.board)
   })
 })
 
-describe('useNumberPlaceGame newGame', () => {
+describe('useNumberPlaceGame New Gameモーダルフロー', () => {
+  it('初期状態ではnewGameModalは閉じている', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+
+    expect(result.current.newGameModal.isOpen).toBe(false)
+  })
+
+  it('openNewGameを呼ぶとモーダルが開き、pendingDifficultyが現在の難易度と一致する', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+
+    act(() => result.current.openNewGame())
+
+    expect(result.current.newGameModal.isOpen).toBe(true)
+    expect(result.current.newGameModal.difficulty).toBe(DEFAULT_DIFFICULTY)
+  })
+
+  it('selectNewGameDifficultyを呼ぶとpendingDifficultyのみ変わる', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    const boardBefore = result.current.board
+
+    act(() => result.current.openNewGame())
+    act(() => result.current.selectNewGameDifficulty('hard'))
+
+    expect(result.current.newGameModal.difficulty).toBe('hard')
+    expect(result.current.board).toBe(boardBefore)
+  })
+
+  it('進行中の盤面がない状態でconfirmNewGameを呼ぶと、window.confirmを呼ばずに新規盤面が生成されモーダルが閉じる', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    const confirmSpy = vi.spyOn(window, 'confirm')
+
+    act(() => result.current.openNewGame())
+    act(() => result.current.selectNewGameDifficulty('hard'))
+    act(() => result.current.confirmNewGame())
+
+    expect(confirmSpy).not.toHaveBeenCalled()
+    expect(result.current.newGameModal.isOpen).toBe(false)
+    confirmSpy.mockRestore()
+  })
+
+  it('進行中の盤面がある状態でconfirmNewGameを呼ぶとwindow.confirmが呼ばれ、同意時のみ新規盤面になる', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    const blank = findBlankCellPosition(result.current.board)
+    act(() => result.current.selectCell(blank))
+    act(() => result.current.inputNumber(7))
+    const boardBeforeNewGame = result.current.board
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    act(() => result.current.openNewGame())
+    act(() => result.current.confirmNewGame())
+
+    expect(confirmSpy).toHaveBeenCalledTimes(1)
+    expect(result.current.newGameModal.isOpen).toBe(false)
+    // 新しい盤面はランダム生成のため、直前の盤面と同一になることは実質的にない
+    expect(result.current.board).not.toEqual(boardBeforeNewGame)
+    confirmSpy.mockRestore()
+  })
+
+  it('window.confirmがfalseを返すと盤面もモーダル開閉状態も変化しない', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    const blank = findBlankCellPosition(result.current.board)
+    act(() => result.current.selectCell(blank))
+    act(() => result.current.inputNumber(7))
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+    act(() => result.current.openNewGame())
+    act(() => result.current.confirmNewGame())
+
+    expect(result.current.newGameModal.isOpen).toBe(true)
+    expect(result.current.board[blank.row][blank.col].value).toBe(7)
+    confirmSpy.mockRestore()
+  })
+
+  it('closeNewGameを呼ぶとモーダルが閉じ盤面は変化しない', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    const boardBefore = result.current.board
+
+    act(() => result.current.openNewGame())
+    act(() => result.current.closeNewGame())
+
+    expect(result.current.newGameModal.isOpen).toBe(false)
+    expect(result.current.board).toBe(boardBefore)
+  })
+
+  it('新規開始した盤面のdifficultyが選択した値でlocalStorageに保存される', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+
+    act(() => result.current.openNewGame())
+    act(() => result.current.selectNewGameDifficulty('expert'))
+    act(() => result.current.confirmNewGame())
+
+    expect(loadGameState()?.difficulty).toBe('expert')
+  })
+
   it('盤面・選択・メモ状態がリセットされる', () => {
     const { result } = renderHook(() => useNumberPlaceGame())
     const blank = findBlankCellPosition(result.current.board)
@@ -693,7 +796,7 @@ describe('useNumberPlaceGame newGame', () => {
     act(() => result.current.toggleMemoMode())
     const boardBeforeNewGame = result.current.board
 
-    act(() => result.current.newGame())
+    confirmNewGame(result)
 
     expect(result.current.selected).toBeNull()
     expect(result.current.isMemoMode).toBe(false)

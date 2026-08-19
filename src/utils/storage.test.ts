@@ -33,6 +33,7 @@ function makeState(
     selected: { row: 1, col: 1 },
     isMemoMode: true,
     isCleared: false,
+    difficulty: 'medium',
     ...overrides,
   }
 }
@@ -79,6 +80,21 @@ describe('loadGameState 未保存・壊れたデータのフォールバック',
   it('boardのサイズが9x9でない場合はnullを返す', () => {
     const state = makeState()
     const broken = { ...state, board: state.board.slice(0, 8) }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(broken))
+
+    expect(loadGameState()).toBeNull()
+  })
+
+  it('difficultyフィールドが欠落している場合（旧v1形式）はnullを返す', () => {
+    const withoutDifficulty: Record<string, unknown> = { ...makeState() }
+    delete withoutDifficulty.difficulty
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(withoutDifficulty))
+
+    expect(loadGameState()).toBeNull()
+  })
+
+  it('difficultyが不正な値の場合はnullを返す', () => {
+    const broken = { ...makeState(), difficulty: 'invalid' }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(broken))
 
     expect(loadGameState()).toBeNull()
