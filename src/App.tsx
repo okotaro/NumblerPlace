@@ -1,6 +1,7 @@
 import { Board } from './components/Board'
 import { ClearModal } from './components/ClearModal'
 import { Controls } from './components/Controls'
+import { NewGameModal } from './components/NewGameModal'
 import { useKeyboardControls } from './hooks/useKeyboardControls'
 import { useNumberPlaceGame } from './hooks/useNumberPlaceGame'
 
@@ -11,6 +12,7 @@ function App() {
     isMemoMode,
     errorCells,
     isCleared,
+    newGameModal,
     selectCell,
     moveSelection,
     toggleMemoMode,
@@ -18,7 +20,10 @@ function App() {
     eraseSelectedCell,
     undo,
     check,
-    newGame,
+    openNewGame,
+    closeNewGame,
+    selectNewGameDifficulty,
+    confirmNewGame,
   } = useNumberPlaceGame()
 
   useKeyboardControls({
@@ -44,9 +49,16 @@ function App() {
         onUndo={undo}
         onErase={eraseSelectedCell}
         onCheck={check}
-        onNewGame={newGame}
+        onNewGame={openNewGame}
       />
-      <ClearModal isOpen={isCleared} onNewGame={newGame} />
+      <ClearModal isOpen={isCleared && !newGameModal.isOpen} onNewGame={openNewGame} />
+      <NewGameModal
+        isOpen={newGameModal.isOpen}
+        difficulty={newGameModal.difficulty}
+        onSelectDifficulty={selectNewGameDifficulty}
+        onConfirm={confirmNewGame}
+        onCancel={closeNewGame}
+      />
     </div>
   )
 }

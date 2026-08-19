@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
@@ -170,7 +170,7 @@ describe('App Checkボタンとエラー表示', () => {
 
 describe('App クリア自動検出とクリア演出', () => {
   it(
-    '全マスを正解で埋めるとクリアモーダルが表示され、New Gameボタンで新しい盤面になる',
+    '全マスを正解で埋めるとクリアモーダルが表示され、New Gameモーダルの決定で新しい盤面になる',
     () => {
       const { container } = render(<App />)
       const cellsBefore = boardButtons(container).map((b) => b.textContent)
@@ -183,11 +183,14 @@ describe('App クリア自動検出とクリア演出', () => {
         fireEvent.click(numberPadButton(container, solution[row][col]))
       })
 
-      const dialog = screen.getByRole('dialog')
-      expect(dialog).toBeInTheDocument()
-      expect(within(dialog).getByText(/クリア/)).toBeInTheDocument()
+      const clearDialog = screen.getByRole('dialog')
+      expect(clearDialog).toBeInTheDocument()
+      expect(within(clearDialog).getByText(/クリア/)).toBeInTheDocument()
 
-      fireEvent.click(within(dialog).getByRole('button', { name: 'New Game' }))
+      fireEvent.click(within(clearDialog).getByRole('button', { name: 'New Game' }))
+
+      const newGameDialog = screen.getByRole('dialog')
+      fireEvent.click(within(newGameDialog).getByRole('button', { name: '決定' }))
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       const cellsAfter = boardButtons(container).map((b) => b.textContent)
@@ -195,6 +198,62 @@ describe('App クリア自動検出とクリア演出', () => {
     },
     15000,
   )
+})
+
+describe('App New Gameボタンと難易度選択モーダル', () => {
+  it('New Gameボタンを押すと難易度選択モーダルが開く', async () => {
+    render(<App />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'New Game' }))
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Medium' })).toBeInTheDocument()
+  })
+
+  it('未入力状態で決定を押すと確認ダイアログなしで新しい盤面になる', async () => {
+    const { container } = render(<App />)
+    const cellsBefore = boardButtons(container).map((b) => b.getAttribute('data-given'))
+    const confirmSpy = vi.spyOn(window, 'confirm')
+
+    await userEvent.click(screen.getByRole('button', { name: 'New Game' }))
+    await userEvent.click(screen.getByRole('button', { name: '決定' }))
+
+    expect(confirmSpy).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    const cellsAfter = boardButtons(container).map((b) => b.getAttribute('data-given'))
+    expect(cellsAfter).not.toEqual(cellsBefore)
+    confirmSpy.mockRestore()
+  })
+
+  it('入力済みの状態で決定を押すと確認ダイアログが出て、同意すると新しい盤面になる', async () => {
+    const { container } = render(<App />)
+    const blank = firstBlankCell(container)
+    await userEvent.click(blank)
+    await userEvent.click(numberPadButton(container, 7))
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    await userEvent.click(screen.getByRole('button', { name: 'New Game' }))
+    await userEvent.click(screen.getByRole('button', { name: '決定' }))
+
+    expect(confirmSpy).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    confirmSpy.mockRestore()
+  })
+
+  it('確認ダイアログでキャンセルすると盤面は変わらない', async () => {
+    const { container } = render(<App />)
+    const blank = firstBlankCell(container)
+    await userEvent.click(blank)
+    await userEvent.click(numberPadButton(container, 7))
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+    await userEvent.click(screen.getByRole('button', { name: 'New Game' }))
+    await userEvent.click(screen.getByRole('button', { name: '決定' }))
+
+    expect(blank.textContent).toBe('7')
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    confirmSpy.mockRestore()
+  })
 })
 
 describe('Appのマウント間でのlocalStorage永続化', () => {

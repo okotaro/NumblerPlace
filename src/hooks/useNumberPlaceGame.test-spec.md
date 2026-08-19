@@ -72,7 +72,7 @@
 | 23  | 複数回の操作後、undoを複数回呼ぶと1手ずつ遡れる                             | `inputNumber(7)` → `inputNumber(3)` の後 `undo()` を2回                          | 1回目のundoで `value===7`、2回目のundoで `value===null` になる     |
 | 24  | 履歴が空の状態でundoを呼んでも例外が起きず盤面は変化しない                  | 何も操作していない状態で `undo()`                                                | 例外が発生せず、boardが変化しない                                  |
 | 25  | 確定マス（ヒント）への入力・消しゴムは盤面を変化させないため履歴に積まれない | ヒントセルを選択し `inputNumber(n)` の後 `undo()`                                | 例外が発生せず、boardが変化しない（undo可能な履歴が増えていない）  |
-| 26  | newGameを呼ぶとUndo履歴もリセットされる                                     | `inputNumber(7)` の後 `newGame()`、その後 `undo()`                               | undo後もnewGame直後の盤面のまま変化しない                          |
+| 26  | New Game確定後はUndo履歴もリセットされる                                     | `inputNumber(7)` の後 `openNewGame()` → `confirmNewGame()`（`window.confirm` は `true` を返すようモック）、その後 `undo()` | undo後も新規開始直後の盤面のまま変化しない                          |
 | 27  | マス選択・メモON/OFF切替は履歴に積まれない                                  | `inputNumber(7)` → 別マスを`selectCell` → `toggleMemoMode()` の後 `undo()` を1回 | 1回のundoで `inputNumber(7)` した内容が取り消される（2回分ではない）|
 | 51  | 誤答マスへの入力をUndoで取り消すと、そのマスのエラー表示が解除される         | 空マスに誤った値を入力 → `check()` → `undo()`                                     | そのマスの位置が `errorCells` に含まれない                          |
 | 52  | 無関係な操作のUndoでは、既存のエラー表示は解除されない                      | 誤答マスAに入力後 `check()` でAがエラーに → 別の空マスBに正しい値を入力 → `undo()`（Bの入力のみ取り消す） | Aの位置は依然として `errorCells` に含まれる                         |
@@ -88,7 +88,7 @@
 | 38  | エラーマスのvalueを変更するとそのマスのエラーが即座に解除される                  | 誤答後 `check()` でエラーになったマスに別の値を `inputNumber` で入力                            | 次の `check()` を待たずに、そのマスの位置が `errorCells` から消える      |
 | 39  | エラーマスのメモを変更してもエラー表示は解除されない                             | 誤答後 `check()` でエラーになったマスに、メモON状態で `inputNumber` を呼ぶ                       | そのマスの位置は `errorCells` に残ったまま                               |
 | 40  | エラーマスをeraseSelectedCellで消去するとエラーが解除される                      | 誤答後 `check()` でエラーになったマスに `eraseSelectedCell()`                                   | そのマスの位置が `errorCells` から消える                                 |
-| 41  | newGameを呼ぶとerrorCellsがリセットされる                                        | 誤答後 `check()` の後 `newGame()`                                                              | `errorCells` が空配列になる                                              |
+| 41  | New Game確定後はerrorCellsがリセットされる                                        | 誤答後 `check()` の後 `openNewGame()` → `confirmNewGame()`                                     | `errorCells` が空配列になる                                              |
 
 ## クリア自動検出（spec.md 9章）
 
@@ -98,7 +98,7 @@
 | 43  | 1マスでも未入力のままではisClearedはfalseのまま                          | 1マスを除いて正解の値を入力する                                     | `isCleared === false`                           |
 | 44  | 1マスでも誤答があるとisClearedはfalseのまま                              | 全マス入力済みだが1マスだけ誤った値を入力する                       | `isCleared === false`                           |
 | 45  | 初期状態ではisClearedはfalse                                              | 新規ゲーム開始直後                                                  | `isCleared === false`                           |
-| 46  | newGameを呼ぶとisClearedがfalseにリセットされる                          | 全マス正解入力でクリア後 `newGame()`                                | `isCleared === false`                           |
+| 46  | New Game確定後はisClearedがfalseにリセットされる                          | 全マス正解入力でクリア後 `openNewGame()` → `confirmNewGame()`        | `isCleared === false`                           |
 
 ## localStorageへの自動保存・復元（spec.md 10章）
 
@@ -107,10 +107,19 @@
 | 47  | 盤面を変更するとlocalStorageに保存される                                 | 空マスを選択し `inputNumber(7)`                                                | `loadGameState()` の戻り値のそのマスの `value` が `7`                          |
 | 48  | 保存された状態がある場合、次のマウントでその状態から復元される           | 値入力・マス選択・メモONにした後アンマウントし、再度 `useNumberPlaceGame` をマウント | 復元後の `board`・`selected`・`isMemoMode` が直前の状態と一致する               |
 | 49  | 保存データが壊れている場合は新規ゲームにフォールバックする               | localStorageの保存キーに不正なJSON文字列をセットしてからマウント                 | 例外が発生せず、9x9の新規盤面が生成される                                       |
-| 50  | newGameを呼ぶと新しい盤面がlocalStorageに保存される                      | `newGame()` を呼ぶ                                                              | `loadGameState()` の `board` が新しい盤面と一致する                             |
+| 50  | New Gameを確定すると新しい盤面がlocalStorageに保存される                 | `openNewGame()` → `confirmNewGame()`                                            | `loadGameState()` の `board` が新しい盤面と一致する                             |
 
-## newGame（spec.md 5.6章・7章）
+## New Gameモーダルフロー（spec.md 5.6章・7章・10章）
 
-| #   | ケース                                              | 前提・操作                                               | 期待される結果                                                                                      |
-| --- | --------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| 19  | newGameを呼ぶと盤面・選択・メモ状態がリセットされる | マスに値を入力し、選択・メモONにした状態から `newGame()` | `selected === null`、`isMemoMode === false`、直前に入力したマスの値が消えている（新しい盤面になる） |
+`newGame()` は廃止し、`newGameModal: { isOpen, difficulty }` / `openNewGame()` / `closeNewGame()` / `selectNewGameDifficulty(d)` / `confirmNewGame()` を公開する。`window.confirm` はテスト内で `vi.spyOn(window, 'confirm')` によりモックする。
+
+| #   | ケース                                                                                       | 前提・操作                                                                                     | 期待される結果                                                                                       |
+| --- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 19  | 初期状態ではnewGameModalは閉じている                                                        | フックをマウント                                                                                    | `newGameModal.isOpen === false`                                                                             |
+| 53  | openNewGameを呼ぶとモーダルが開き、pendingDifficultyが現在の難易度と一致する                | 初期状態から `openNewGame()`                                                                        | `newGameModal.isOpen === true`、`newGameModal.difficulty === DEFAULT_DIFFICULTY`                            |
+| 54  | selectNewGameDifficultyを呼ぶとpendingDifficultyのみ変わる                                   | `openNewGame()` の後 `selectNewGameDifficulty('hard')`                                              | `newGameModal.difficulty === 'hard'`、盤面は変化しない                                                      |
+| 55  | 進行中の盤面がない状態でconfirmNewGameを呼ぶと、window.confirmを呼ばずに新規盤面が生成されモーダルが閉じる | 何も入力していない状態で `openNewGame()` → `selectNewGameDifficulty('hard')` → `confirmNewGame()` | `window.confirm` が呼ばれない、`newGameModal.isOpen === false`、盤面が新しくなる                            |
+| 56  | 進行中の盤面がある状態でconfirmNewGameを呼ぶとwindow.confirmが呼ばれ、同意時のみ新規盤面になる | 空マスに入力後 `openNewGame()` → `confirmNewGame()`、`window.confirm` が `true` を返す              | `window.confirm` が1回呼ばれる、`newGameModal.isOpen === false`、盤面が新しくなる                           |
+| 57  | window.confirmがfalseを返すと盤面もモーダル開閉状態も変化しない                             | 空マスに入力後 `openNewGame()` → `confirmNewGame()`、`window.confirm` が `false` を返す             | `newGameModal.isOpen === true` のまま、直前に入力したマスの値が保持される                                   |
+| 58  | closeNewGameを呼ぶとモーダルが閉じ盤面は変化しない                                          | `openNewGame()` の後 `closeNewGame()`                                                               | `newGameModal.isOpen === false`、盤面は変化しない                                                           |
+| 59  | 新規開始した盤面のdifficultyが選択した値でlocalStorageに保存される                          | `openNewGame()` → `selectNewGameDifficulty('expert')` → `confirmNewGame()`                          | `loadGameState()?.difficulty === 'expert'`                                                                  |

@@ -9,6 +9,14 @@ export type PuzzleBoard = {
 
 export const DEFAULT_DIFFICULTY: Difficulty = 'medium'
 
+export const DIFFICULTIES: readonly Difficulty[] = [
+  'easy',
+  'medium',
+  'hard',
+  'expert',
+  'master',
+]
+
 export function generatePuzzle(difficulty: Difficulty): PuzzleBoard {
   return generatePuzzleBoard(difficulty)
 }

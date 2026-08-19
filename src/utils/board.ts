@@ -18,3 +18,9 @@ export function createInitialBoard(given: (number | null)[][]): Board {
     }),
   )
 }
+
+export function hasProgress(board: Board): boolean {
+  return board.some((row) =>
+    row.some((cell) => !cell.isGiven && cell.value !== null),
+  )
+}

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   checkAnswers,
   DEFAULT_DIFFICULTY,
+  DIFFICULTIES,
   generatePuzzle,
   isBoardComplete,
   type Difficulty,
@@ -77,6 +78,12 @@ describe('generatePuzzle', () => {
 describe('DEFAULT_DIFFICULTY', () => {
   it('is medium', () => {
     expect(DEFAULT_DIFFICULTY).toBe('medium')
+  })
+})
+
+describe('DIFFICULTIES', () => {
+  it('lists all five difficulties in display order', () => {
+    expect(DIFFICULTIES).toEqual(['easy', 'medium', 'hard', 'expert', 'master'])
   })
 })
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createInitialBoard } from './board'
+import { createInitialBoard, hasProgress } from './board'
 
 function makeGiven(hints: Record<string, number>): (number | null)[][] {
   return Array.from({ length: 9 }, (_, row) =>
@@ -36,5 +36,30 @@ describe('createInitialBoard', () => {
         }
       }),
     )
+  })
+})
+
+describe('hasProgress', () => {
+  it('returns false when no user input exists', () => {
+    const given = makeGiven({ '0,0': 5, '3,4': 9 })
+    const board = createInitialBoard(given)
+
+    expect(hasProgress(board)).toBe(false)
+  })
+
+  it('returns true when at least one blank cell has a user value', () => {
+    const given = makeGiven({ '0,0': 5, '3,4': 9 })
+    const board = createInitialBoard(given)
+    board[1][1].value = 7
+
+    expect(hasProgress(board)).toBe(true)
+  })
+
+  it('does not count given (hint) cells as progress', () => {
+    const given = makeGiven({ '0,0': 5, '3,4': 9 })
+    const board = createInitialBoard(given)
+
+    expect(board[0][0].isGiven).toBe(true)
+    expect(hasProgress(board)).toBe(false)
   })
 })
