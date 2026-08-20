@@ -8,6 +8,7 @@ function renderControls(
 ) {
   const props = {
     isMemoMode: false,
+    completedNumbers: [],
     onNumberClick: vi.fn(),
     onUndo: vi.fn(),
     onErase: vi.fn(),
@@ -91,5 +92,12 @@ describe('Controls メモON/OFFの状態表示', () => {
       'aria-pressed',
       'false',
     )
+  })
+})
+
+describe('Controls completedNumbersの受け渡し', () => {
+  it('completedNumbersがNumberPadにそのまま渡され無効化される', () => {
+    renderControls({ completedNumbers: [5] })
+    expect(screen.getByRole('button', { name: '5' })).toBeDisabled()
   })
 })

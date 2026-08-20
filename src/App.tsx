@@ -12,6 +12,7 @@ function App() {
     isMemoMode,
     errorCells,
     isCleared,
+    completedNumbers,
     newGameModal,
     selectCell,
     moveSelection,
@@ -44,6 +45,7 @@ function App() {
       </div>
       <Controls
         isMemoMode={isMemoMode}
+        completedNumbers={completedNumbers}
         onToggleMemoMode={toggleMemoMode}
         onNumberClick={inputNumber}
         onUndo={undo}

@@ -168,6 +168,60 @@ describe('App Checkボタンとエラー表示', () => {
   })
 })
 
+describe('App 入力済み数字ボタンの無効化', () => {
+  function blankPositions(container: HTMLElement) {
+    return boardButtons(container)
+      .map((cell, index) => ({ cell, ...indexToPosition(index) }))
+      .filter(({ cell }) => !cell.hasAttribute('data-given'))
+  }
+
+  it('ある数字を9個入力しきるとその数字ボタンが無効化される', () => {
+    const { container } = render(<App />)
+    const solution = currentSolution()
+    const blanks = blankPositions(container)
+    const target = solution[blanks[0].row][blanks[0].col]
+    const targetBlanks = blanks.filter(
+      ({ row, col }) => solution[row][col] === target,
+    )
+
+    targetBlanks.forEach(({ cell }) => {
+      fireEvent.click(cell)
+      fireEvent.click(numberPadButton(container, target))
+    })
+
+    expect(numberPadButton(container, target)).toBeDisabled()
+  })
+
+  it('Checkで誤答と判明したマスを消去すると数字ボタンの無効化が解除される', () => {
+    const { container } = render(<App />)
+    const solution = currentSolution()
+    const blanks = blankPositions(container)
+    const target = solution[blanks[0].row][blanks[0].col]
+    const targetTrueBlanks = blanks.filter(
+      ({ row, col }) => solution[row][col] === target,
+    )
+    const otherBlanks = blanks.filter(
+      ({ row, col }) => solution[row][col] !== target,
+    )
+
+    targetTrueBlanks.slice(0, -1).forEach(({ cell }) => {
+      fireEvent.click(cell)
+      fireEvent.click(numberPadButton(container, target))
+    })
+    const wrongCell = otherBlanks[0].cell
+    fireEvent.click(wrongCell)
+    fireEvent.click(numberPadButton(container, target))
+    expect(numberPadButton(container, target)).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Check' }))
+    expect(wrongCell).toHaveAttribute('data-error', 'true')
+
+    fireEvent.click(screen.getByRole('button', { name: '消しゴム' }))
+
+    expect(numberPadButton(container, target)).not.toBeDisabled()
+  })
+})
+
 describe('App クリア自動検出とクリア演出', () => {
   it(
     '全マスを正解で埋めるとクリアモーダルが表示され、New Gameモーダルの決定で新しい盤面になる',

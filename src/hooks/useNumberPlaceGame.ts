@@ -7,7 +7,12 @@ import {
   type Difficulty,
   type PuzzleBoard,
 } from '../services/numberPlaceService'
-import { createEmptyMemos, createInitialBoard, hasProgress } from '../utils/board'
+import {
+  countPlacedValues,
+  createEmptyMemos,
+  createInitialBoard,
+  hasProgress,
+} from '../utils/board'
 import { loadGameState, saveGameState } from '../utils/storage'
 import type { Board, MemoMark, Position } from '../types'
 
@@ -156,6 +161,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case 'TOGGLE_MEMO_MODE':
       return { ...state, isMemoMode: !state.isMemoMode }
     case 'INPUT_NUMBER':
+      if (countPlacedValues(state.board)[action.value] === 9) return state
       return updateBoardWithHistory(
         state,
         (memos) =>
@@ -254,11 +260,17 @@ export function useNumberPlaceGame(
     state.difficulty,
   ])
 
+  const placedValueCounts = countPlacedValues(state.board)
+  const completedNumbers = Array.from({ length: 9 }, (_, i) => i + 1).filter(
+    (n) => placedValueCounts[n] === 9,
+  )
+
   return {
     board: state.board,
     selected: state.selected,
     isMemoMode: state.isMemoMode,
     errorCells: state.errorCells,
+    completedNumbers,
     isCleared: state.isCleared,
     newGameModal: state.newGameModal,
     selectCell: (position: Position) =>

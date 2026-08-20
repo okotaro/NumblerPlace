@@ -3,6 +3,7 @@ import { NumberPad } from './NumberPad'
 
 type ControlsProps = {
   isMemoMode: boolean
+  completedNumbers: number[]
   onNumberClick: (n: number) => void
   onUndo: () => void
   onErase: () => void
@@ -19,6 +20,7 @@ const iconButtonClassName =
 
 export function Controls({
   isMemoMode,
+  completedNumbers,
   onNumberClick,
   onUndo,
   onErase,
@@ -60,7 +62,7 @@ export function Controls({
           <NotebookPen aria-hidden="true" className="h-5 w-5" />
         </button>
       </div>
-      <NumberPad onNumberClick={onNumberClick} />
+      <NumberPad onNumberClick={onNumberClick} completedNumbers={completedNumbers} />
       <button type="button" onClick={onCheck} className={buttonClassName}>
         Check
       </button>
