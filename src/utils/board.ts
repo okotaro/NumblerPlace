@@ -24,3 +24,18 @@ export function hasProgress(board: Board): boolean {
     row.some((cell) => !cell.isGiven && cell.value !== null),
   )
 }
+
+export function countPlacedValues(board: Board): Record<number, number> {
+  const counts: Record<number, number> = {}
+  for (let n = 1; n <= 9; n++) {
+    counts[n] = 0
+  }
+  board.forEach((row) =>
+    row.forEach((cell) => {
+      if (cell.value !== null) {
+        counts[cell.value] += 1
+      }
+    }),
+  )
+  return counts
+}

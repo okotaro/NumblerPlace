@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createInitialBoard, hasProgress } from './board'
+import { countPlacedValues, createInitialBoard, hasProgress } from './board'
 
 function makeGiven(hints: Record<string, number>): (number | null)[][] {
   return Array.from({ length: 9 }, (_, row) =>
@@ -61,5 +61,54 @@ describe('hasProgress', () => {
 
     expect(board[0][0].isGiven).toBe(true)
     expect(hasProgress(board)).toBe(false)
+  })
+})
+
+describe('countPlacedValues', () => {
+  it('returns 0 for every number on an all-blank board', () => {
+    const board = createInitialBoard(makeGiven({}))
+
+    const counts = countPlacedValues(board)
+
+    for (let n = 1; n <= 9; n++) {
+      expect(counts[n]).toBe(0)
+    }
+  })
+
+  it('counts given (hint) cells', () => {
+    const board = createInitialBoard(
+      makeGiven({ '0,0': 3, '1,1': 3, '2,2': 3 }),
+    )
+
+    expect(countPlacedValues(board)[3]).toBe(3)
+  })
+
+  it('counts user-entered values', () => {
+    const board = createInitialBoard(makeGiven({}))
+    board[0][0].value = 4
+    board[1][1].value = 4
+    board[2][2].value = 4
+    board[3][3].value = 4
+    board[4][4].value = 4
+
+    expect(countPlacedValues(board)[4]).toBe(5)
+  })
+
+  it('sums given and user-entered cells together', () => {
+    const board = createInitialBoard(makeGiven({ '0,0': 2, '1,1': 2 }))
+    for (let i = 2; i < 9; i++) {
+      board[i][i].value = 2
+    }
+
+    expect(countPlacedValues(board)[2]).toBe(9)
+  })
+
+  it('counts placements regardless of correctness', () => {
+    const board = createInitialBoard(makeGiven({}))
+    for (let i = 0; i < 9; i++) {
+      board[i][0].value = 7
+    }
+
+    expect(countPlacedValues(board)[7]).toBe(9)
   })
 })

@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useNumberPlaceGame } from './useNumberPlaceGame'
 import { DEFAULT_DIFFICULTY } from '../services/numberPlaceService'
+import { countPlacedValues } from '../utils/board'
 import { STORAGE_KEY, loadGameState } from '../utils/storage'
 
 beforeEach(() => {
@@ -266,6 +267,107 @@ describe('useNumberPlaceGame inputNumber（メモON時・循環ロジック）',
   })
 })
 
+function fillNumberToBoardCount(
+  result: { current: ReturnType<typeof useNumberPlaceGame> },
+  n: number,
+  targetCount: number,
+) {
+  while (countPlacedValues(result.current.board)[n] < targetCount) {
+    const board = result.current.board
+    let filled = false
+    for (let row = 0; row < 9 && !filled; row++) {
+      for (let col = 0; col < 9 && !filled; col++) {
+        const cell = board[row][col]
+        if (!cell.isGiven && cell.value !== n) {
+          act(() => result.current.selectCell({ row, col }))
+          act(() => result.current.inputNumber(n))
+          filled = true
+        }
+      }
+    }
+    if (!filled) throw new Error('no more blank cells to fill')
+  }
+}
+
+describe('useNumberPlaceGame completedNumbers・入力済み数字のガード', () => {
+  it('初期状態のcompletedNumbersはヒント配置数が9個の数字のみを含む', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    const counts = countPlacedValues(result.current.board)
+
+    result.current.completedNumbers.forEach((n) => {
+      expect(counts[n]).toBe(9)
+    })
+  })
+
+  it('ある数字の配置数が9個になるとcompletedNumbersにその数字が含まれる', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+
+    fillNumberToBoardCount(result, 1, 9)
+
+    expect(result.current.completedNumbers).toContain(1)
+  })
+
+  it('配置数が9個の数字にinputNumberを呼んでも選択中マスのvalueは変わらない', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    fillNumberToBoardCount(result, 1, 9)
+    const blank = result.current.board
+      .flatMap((row, rowIndex) =>
+        row.map((cell, colIndex) => ({ cell, position: { row: rowIndex, col: colIndex } })),
+      )
+      .find(({ cell }) => !cell.isGiven && cell.value === null)?.position
+    if (!blank) throw new Error('no blank cell found')
+
+    act(() => result.current.selectCell(blank))
+    act(() => result.current.inputNumber(1))
+
+    expect(result.current.board[blank.row][blank.col].value).toBeNull()
+  })
+
+  it('配置数が9個の数字にinputNumberを呼んでも選択中マスのmemosは変わらない（メモON）', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    fillNumberToBoardCount(result, 1, 9)
+    const blank = result.current.board
+      .flatMap((row, rowIndex) =>
+        row.map((cell, colIndex) => ({ cell, position: { row: rowIndex, col: colIndex } })),
+      )
+      .find(({ cell }) => !cell.isGiven && cell.value === null)?.position
+    if (!blank) throw new Error('no blank cell found')
+
+    act(() => result.current.selectCell(blank))
+    act(() => result.current.toggleMemoMode())
+    act(() => result.current.inputNumber(1))
+
+    expect(result.current.board[blank.row][blank.col].memos[1]).toBe('none')
+  })
+
+  it('誤答を含めて配置数が9個になった数字も同様に入力不可になる', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    fillNumberToBoardCount(result, 9, 9)
+
+    expect(result.current.completedNumbers).toContain(9)
+  })
+
+  it('配置数9個のマスを消去すると再びその数字が入力可能になる', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    fillNumberToBoardCount(result, 1, 9)
+    const filledPosition = result.current.board
+      .flatMap((row, rowIndex) =>
+        row.map((cell, colIndex) => ({ cell, position: { row: rowIndex, col: colIndex } })),
+      )
+      .find(({ cell }) => !cell.isGiven && cell.value === 1)?.position
+    if (!filledPosition) throw new Error('no filled cell found')
+
+    act(() => result.current.selectCell(filledPosition))
+    act(() => result.current.eraseSelectedCell())
+
+    expect(result.current.completedNumbers).not.toContain(1)
+
+    act(() => result.current.inputNumber(1))
+
+    expect(result.current.board[filledPosition.row][filledPosition.col].value).toBe(1)
+  })
+})
+
 describe('useNumberPlaceGame eraseSelectedCell', () => {
   it('valueがnullになり全メモがnoneになる', () => {
     const { result } = renderHook(() => useNumberPlaceGame())
@@ -451,6 +553,7 @@ function classifyValues(
   let wrongValue: number | null = null
   for (let n = 1; n <= 9; n++) {
     act(() => result.current.inputNumber(n))
+    if (result.current.board[position.row][position.col].value !== n) continue
     act(() => result.current.check())
     const isError = result.current.errorCells.some(
       (p) => p.row === position.row && p.col === position.col,
@@ -572,6 +675,7 @@ function fillCorrectValue(
   act(() => result.current.selectCell(position))
   for (let n = 1; n <= 9; n++) {
     act(() => result.current.inputNumber(n))
+    if (result.current.board[position.row][position.col].value !== n) continue
     act(() => result.current.check())
     const isError = result.current.errorCells.some(
       (p) => p.row === position.row && p.col === position.col,
@@ -617,18 +721,25 @@ describe('useNumberPlaceGame クリア自動検出', () => {
     expect(result.current.isCleared).toBe(false)
   })
 
-  it('1マスでも誤答があるとisClearedはfalseのまま', () => {
+  it('全マス入力済みでも誤答が残っていればisClearedはfalseのまま', () => {
     const { result } = renderHook(() => useNumberPlaceGame())
     const blanks = findBlankCellPositions(result.current.board)
 
-    blanks.slice(0, -1).forEach((position) => fillCorrectValue(result, position))
-    const last = blanks[blanks.length - 1]
-    act(() => result.current.selectCell(last))
-    act(() => result.current.inputNumber(1))
-    act(() => result.current.check())
-    if (!result.current.errorCells.some((p) => p.row === last.row && p.col === last.col)) {
-      act(() => result.current.inputNumber(2))
-    }
+    // 入力済み数字ボタンの無効化（Issue #21）により、既に9個配置済みの数字は
+    // 他のマスへ入力できなくなる。そのため「全マス入力済みで1マスだけ誤答」という
+    // 状態は最後の2マスの正解を入れ替えることでのみ作れる（2マスとも誤答になる）。
+    blanks.slice(0, -2).forEach((position) => fillCorrectValue(result, position))
+    const [posX, posY] = blanks.slice(-2)
+
+    act(() => result.current.selectCell(posX))
+    const { correctValue: correctX, wrongValue: correctY } = classifyValues(
+      result,
+      posX,
+    )
+    act(() => result.current.selectCell(posX))
+    act(() => result.current.inputNumber(correctY))
+    act(() => result.current.selectCell(posY))
+    act(() => result.current.inputNumber(correctX))
 
     expect(result.current.isCleared).toBe(false)
   })
