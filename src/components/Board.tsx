@@ -5,6 +5,7 @@ type BoardProps = {
   board: BoardType
   selected: Position | null
   errorCells: Position[]
+  hintPosition?: Position | null
   onSelectCell: (position: Position) => void
 }
 
@@ -46,7 +47,13 @@ function borderClassName(position: Position): string {
   return classes.join(' ')
 }
 
-export function Board({ board, selected, errorCells, onSelectCell }: BoardProps) {
+export function Board({
+  board,
+  selected,
+  errorCells,
+  hintPosition = null,
+  onSelectCell,
+}: BoardProps) {
   return (
     <div className="grid aspect-square w-full grid-cols-9 grid-rows-9 border-2 border-gray-700">
       {board.map((row, rowIndex) =>
@@ -64,6 +71,10 @@ export function Board({ board, selected, errorCells, onSelectCell }: BoardProps)
           )
           const isSameValue =
             selected !== null && isSameValueCell(position, selected, board)
+          const isHint =
+            hintPosition !== null &&
+            hintPosition.row === rowIndex &&
+            hintPosition.col === colIndex
 
           return (
             <Cell
@@ -73,6 +84,7 @@ export function Board({ board, selected, errorCells, onSelectCell }: BoardProps)
               isRelated={isRelated}
               isError={isError}
               isSameValue={isSameValue}
+              isHint={isHint}
               onSelect={() => onSelectCell(position)}
               className={borderClassName(position)}
             />

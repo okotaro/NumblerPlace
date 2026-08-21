@@ -6,6 +6,7 @@ type CellProps = {
   isRelated: boolean
   isError: boolean
   isSameValue?: boolean
+  isHint?: boolean
   onSelect: () => void
   className?: string
 }
@@ -18,6 +19,7 @@ export function Cell({
   isRelated,
   isError,
   isSameValue = false,
+  isHint = false,
   onSelect,
   className,
 }: CellProps) {
@@ -30,7 +32,8 @@ export function Cell({
       data-related={isRelated || undefined}
       data-same-value={isSameValue || undefined}
       data-error={isError || undefined}
-      className={`flex aspect-square w-full items-center justify-center border border-gray-300 text-lg data-[given]:bg-gray-100 data-[given]:font-bold data-[given]:text-gray-700 data-[related]:bg-blue-100 data-[same-value]:bg-amber-100 data-[selected]:bg-blue-300 data-[error]:!bg-red-200 ${className ?? ''}`}
+      data-hint={isHint || undefined}
+      className={`flex aspect-square w-full items-center justify-center border border-gray-300 text-lg data-[given]:bg-gray-100 data-[given]:font-bold data-[given]:text-gray-700 data-[related]:bg-blue-100 data-[same-value]:bg-amber-100 data-[selected]:bg-blue-300 data-[error]:!bg-red-200 data-[hint]:ring-4 data-[hint]:ring-inset data-[hint]:ring-yellow-400 ${className ?? ''}`}
     >
       {cell.value !== null ? (
         <span

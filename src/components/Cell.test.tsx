@@ -273,6 +273,38 @@ describe('Cell エラー表示', () => {
   })
 })
 
+describe('Cell ヒント表示', () => {
+  it('isHint=trueのときヒント用の強調スタイルが付く', () => {
+    render(
+      <Cell
+        cell={makeCell()}
+        isSelected={false}
+        isRelated={false}
+        isError={false}
+        isHint={true}
+        onSelect={() => {}}
+      />,
+    )
+
+    expect(screen.getByRole('button')).toHaveAttribute('data-hint', 'true')
+  })
+
+  it('isHint=falseのときヒント用の強調スタイルは付かない', () => {
+    render(
+      <Cell
+        cell={makeCell()}
+        isSelected={false}
+        isRelated={false}
+        isError={false}
+        isHint={false}
+        onSelect={() => {}}
+      />,
+    )
+
+    expect(screen.getByRole('button')).not.toHaveAttribute('data-hint')
+  })
+})
+
 describe('Cell 操作', () => {
   it('マスをクリックするとonSelectが呼ばれる', async () => {
     const onSelect = vi.fn()

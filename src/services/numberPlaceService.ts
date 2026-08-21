@@ -1,6 +1,8 @@
 import { generatePuzzleBoard, type Difficulty } from './backtracking/generator'
+import { findHint as findHintInternal, type Hint, type HintTechnique } from './hint/hintFinder'
 
 export type { Difficulty }
+export type { Hint, HintTechnique }
 
 export type PuzzleBoard = {
   given: (number | null)[][] // 9x9、初期ヒント（ヒントでないマスはnull）
@@ -35,4 +37,11 @@ export function checkAnswers(
         value !== null && value !== solution[rowIndex][colIndex],
     ),
   )
+}
+
+export function findHint(
+  userValues: (number | null)[][],
+  solution: number[][],
+): Hint | null {
+  return findHintInternal(userValues, solution)
 }

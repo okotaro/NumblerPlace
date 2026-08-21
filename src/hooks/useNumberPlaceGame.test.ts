@@ -1,9 +1,15 @@
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useNumberPlaceGame } from './useNumberPlaceGame'
+import * as numberPlaceService from '../services/numberPlaceService'
 import { DEFAULT_DIFFICULTY } from '../services/numberPlaceService'
 import { countPlacedValues } from '../utils/board'
 import { STORAGE_KEY, loadGameState } from '../utils/storage'
+
+vi.mock('../services/numberPlaceService', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../services/numberPlaceService')>()
+  return { ...actual, findHint: vi.fn(actual.findHint) }
+})
 
 beforeEach(() => {
   localStorage.clear()
@@ -913,5 +919,103 @@ describe('useNumberPlaceGame New Gameモーダルフロー', () => {
     expect(result.current.isMemoMode).toBe(false)
     // 新しい盤面はランダム生成のため、直前の盤面と同一になることは実質的にない
     expect(result.current.board).not.toEqual(boardBeforeNewGame)
+  })
+})
+
+// 空きマスをすべて正解で埋め、1マスだけ残す。残った1マスは盤面全体でその行・列・
+// ブロックに残る値が1つしかないため、Naked Singleとして確実に検出できる状態になる。
+function fillAllBlanksButOne(
+  result: { current: ReturnType<typeof useNumberPlaceGame> },
+) {
+  const blanks = findBlankCellPositions(result.current.board)
+  const remaining = blanks[blanks.length - 1]
+  blanks.slice(0, -1).forEach((position) => fillCorrectValue(result, position))
+  return remaining
+}
+
+describe('useNumberPlaceGame requestHint', () => {
+  it('初期状態ではhintはnone', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    expect(result.current.hint.status).toBe('none')
+  })
+
+  it('requestHintを呼ぶと該当マスがハイライト状態になり、そのマスが選択される', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    const remaining = fillAllBlanksButOne(result)
+
+    act(() => result.current.requestHint())
+
+    expect(result.current.hint.status).toBe('highlight')
+    if (result.current.hint.status === 'highlight') {
+      expect(result.current.hint.hint.position).toEqual(remaining)
+    }
+    expect(result.current.selected).toEqual(remaining)
+  })
+
+  it('ハイライト状態で続けてrequestHintを呼ぶと理由表示状態になる', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    fillAllBlanksButOne(result)
+    act(() => result.current.requestHint())
+    const highlighted = result.current.hint
+
+    act(() => result.current.requestHint())
+
+    expect(result.current.hint.status).toBe('reason')
+    if (result.current.hint.status === 'reason' && highlighted.status === 'highlight') {
+      expect(result.current.hint.hint).toEqual(highlighted.hint)
+    }
+  })
+
+  it('理由表示状態で続けてrequestHintを呼ぶと再計算されハイライト状態に戻る', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    fillAllBlanksButOne(result)
+    act(() => result.current.requestHint())
+    act(() => result.current.requestHint())
+
+    act(() => result.current.requestHint())
+
+    expect(result.current.hint.status).toBe('highlight')
+  })
+
+  it('該当技法が見つからない場合はnotFound状態になる', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    vi.mocked(numberPlaceService.findHint).mockReturnValueOnce(null)
+
+    act(() => result.current.requestHint())
+
+    expect(result.current.hint.status).toBe('notFound')
+  })
+
+  it('ヒント表示中に解答を入力するとヒント状態がnoneにリセットされる', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    fillAllBlanksButOne(result)
+    act(() => result.current.requestHint())
+    const hint = result.current.hint
+    if (hint.status !== 'highlight') throw new Error('expected highlight state')
+
+    act(() => result.current.inputNumber(hint.hint.value))
+
+    expect(result.current.hint.status).toBe('none')
+  })
+
+  it('ヒント表示中にUndoを呼ぶとヒント状態がnoneにリセットされる', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    fillAllBlanksButOne(result)
+    act(() => result.current.requestHint())
+
+    act(() => result.current.undo())
+
+    expect(result.current.hint.status).toBe('none')
+  })
+
+  it('New Game確定後はヒント状態がnoneにリセットされる', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    fillAllBlanksButOne(result)
+    act(() => result.current.requestHint())
+    expect(result.current.hint.status).toBe('highlight')
+
+    confirmNewGame(result)
+
+    expect(result.current.hint.status).toBe('none')
   })
 })
