@@ -1,6 +1,7 @@
 import { Board } from './components/Board'
 import { ClearModal } from './components/ClearModal'
 import { Controls } from './components/Controls'
+import { HintPanel } from './components/HintPanel'
 import { NewGameModal } from './components/NewGameModal'
 import { useKeyboardControls } from './hooks/useKeyboardControls'
 import { useNumberPlaceGame } from './hooks/useNumberPlaceGame'
@@ -14,6 +15,7 @@ function App() {
     isCleared,
     completedNumbers,
     newGameModal,
+    hint,
     selectCell,
     moveSelection,
     toggleMemoMode,
@@ -24,8 +26,12 @@ function App() {
     openNewGame,
     closeNewGame,
     selectNewGameDifficulty,
+    requestHint,
     confirmNewGame,
   } = useNumberPlaceGame()
+
+  const hintPosition =
+    hint.status === 'highlight' || hint.status === 'reason' ? hint.hint.position : null
 
   useKeyboardControls({
     onMove: moveSelection,
@@ -40,19 +46,24 @@ function App() {
           board={board}
           selected={selected}
           errorCells={errorCells}
+          hintPosition={hintPosition}
           onSelectCell={selectCell}
         />
       </div>
-      <Controls
-        isMemoMode={isMemoMode}
-        completedNumbers={completedNumbers}
-        onToggleMemoMode={toggleMemoMode}
-        onNumberClick={inputNumber}
-        onUndo={undo}
-        onErase={eraseSelectedCell}
-        onCheck={check}
-        onNewGame={openNewGame}
-      />
+      <div className="flex w-full max-w-xs flex-col gap-4">
+        <Controls
+          isMemoMode={isMemoMode}
+          completedNumbers={completedNumbers}
+          onToggleMemoMode={toggleMemoMode}
+          onNumberClick={inputNumber}
+          onUndo={undo}
+          onErase={eraseSelectedCell}
+          onCheck={check}
+          onNewGame={openNewGame}
+          onHint={requestHint}
+        />
+        <HintPanel hint={hint} />
+      </div>
       <ClearModal isOpen={isCleared && !newGameModal.isOpen} onNewGame={openNewGame} />
       <NewGameModal
         isOpen={newGameModal.isOpen}

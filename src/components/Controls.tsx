@@ -1,4 +1,4 @@
-import { Eraser, NotebookPen, Undo2 } from 'lucide-react'
+import { Eraser, Lightbulb, NotebookPen, Undo2 } from 'lucide-react'
 import { NumberPad } from './NumberPad'
 
 type ControlsProps = {
@@ -10,6 +10,7 @@ type ControlsProps = {
   onToggleMemoMode: () => void
   onCheck: () => void
   onNewGame: () => void
+  onHint: () => void
 }
 
 const buttonClassName =
@@ -27,6 +28,7 @@ export function Controls({
   onToggleMemoMode,
   onCheck,
   onNewGame,
+  onHint,
 }: ControlsProps) {
   const memoLabel = `メモ ${isMemoMode ? 'ON' : 'OFF'}`
 
@@ -60,6 +62,15 @@ export function Controls({
           className={`${iconButtonClassName} ${isMemoMode ? 'border-blue-500 bg-blue-100' : ''}`}
         >
           <NotebookPen aria-hidden="true" className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          onClick={onHint}
+          className={iconButtonClassName}
+          aria-label="ヒント"
+          title="ヒント"
+        >
+          <Lightbulb aria-hidden="true" className="h-5 w-5" />
         </button>
       </div>
       <NumberPad onNumberClick={onNumberClick} completedNumbers={completedNumbers} />

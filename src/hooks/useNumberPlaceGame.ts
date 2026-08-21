@@ -2,9 +2,11 @@ import { useEffect, useReducer } from 'react'
 import {
   DEFAULT_DIFFICULTY,
   checkAnswers,
+  findHint,
   generatePuzzle,
   isBoardComplete,
   type Difficulty,
+  type Hint,
   type PuzzleBoard,
 } from '../services/numberPlaceService'
 import {
@@ -16,6 +18,14 @@ import {
 import { loadGameState, saveGameState } from '../utils/storage'
 import type { Board, MemoMark, Position } from '../types'
 
+export type HintState =
+  | { status: 'none' }
+  | { status: 'notFound' }
+  | { status: 'highlight'; hint: Hint }
+  | { status: 'reason'; hint: Hint }
+
+const NO_HINT: HintState = { status: 'none' }
+
 type GameState = {
   board: Board
   solution: number[][]
@@ -26,6 +36,7 @@ type GameState = {
   isCleared: boolean
   difficulty: Difficulty
   newGameModal: { isOpen: boolean; difficulty: Difficulty }
+  hint: HintState
 }
 
 export type Direction = 'up' | 'down' | 'left' | 'right'
@@ -49,6 +60,7 @@ type GameAction =
   | { type: 'OPEN_NEW_GAME_MODAL' }
   | { type: 'CLOSE_NEW_GAME_MODAL' }
   | { type: 'SELECT_NEW_GAME_DIFFICULTY'; difficulty: Difficulty }
+  | { type: 'REQUEST_HINT' }
 
 function createGameState(puzzle: PuzzleBoard, difficulty: Difficulty): GameState {
   return {
@@ -61,6 +73,7 @@ function createGameState(puzzle: PuzzleBoard, difficulty: Difficulty): GameState
     isCleared: false,
     difficulty,
     newGameModal: { isOpen: false, difficulty },
+    hint: NO_HINT,
   }
 }
 
@@ -77,6 +90,7 @@ function createInitialGameState(difficulty: Difficulty): GameState {
       isCleared: persisted.isCleared,
       difficulty: persisted.difficulty,
       newGameModal: { isOpen: false, difficulty: persisted.difficulty },
+      hint: NO_HINT,
     }
   }
   return createGameState(generatePuzzle(difficulty), difficulty)
@@ -143,6 +157,7 @@ function updateBoardWithHistory(
     ...next,
     history: [...state.history, state.board],
     errorCells,
+    hint: NO_HINT,
   })
 }
 
@@ -212,6 +227,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         board: previousBoard,
         history: state.history.slice(0, -1),
         errorCells,
+        hint: NO_HINT,
       })
     }
     case 'NEW_GAME':
@@ -228,6 +244,21 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         newGameModal: { ...state.newGameModal, difficulty: action.difficulty },
       }
+    case 'REQUEST_HINT': {
+      if (state.hint.status === 'highlight') {
+        return { ...state, hint: { status: 'reason', hint: state.hint.hint } }
+      }
+      const userValues = state.board.map((row) => row.map((cell) => cell.value))
+      const hint = findHint(userValues, state.solution)
+      if (hint === null) {
+        return { ...state, hint: { status: 'notFound' } }
+      }
+      return {
+        ...state,
+        selected: hint.position,
+        hint: { status: 'highlight', hint },
+      }
+    }
     default:
       return state
   }
@@ -273,6 +304,7 @@ export function useNumberPlaceGame(
     completedNumbers,
     isCleared: state.isCleared,
     newGameModal: state.newGameModal,
+    hint: state.hint,
     selectCell: (position: Position) =>
       dispatch({ type: 'SELECT_CELL', position }),
     moveSelection: (direction: Direction) =>
@@ -286,6 +318,7 @@ export function useNumberPlaceGame(
     closeNewGame: () => dispatch({ type: 'CLOSE_NEW_GAME_MODAL' }),
     selectNewGameDifficulty: (value: Difficulty) =>
       dispatch({ type: 'SELECT_NEW_GAME_DIFFICULTY', difficulty: value }),
+    requestHint: () => dispatch({ type: 'REQUEST_HINT' }),
     confirmNewGame: () => {
       if (hasProgress(state.board) && !state.isCleared) {
         if (!window.confirm('進行中の盤面があります。新しいゲームを開始しますか？')) {

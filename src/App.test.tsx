@@ -310,6 +310,53 @@ describe('App New Gameボタンと難易度選択モーダル', () => {
   })
 })
 
+describe('App ヒント機能', () => {
+  function blankPositions(container: HTMLElement) {
+    return boardButtons(container)
+      .map((cell, index) => ({ cell, ...indexToPosition(index) }))
+      .filter(({ cell }) => !cell.hasAttribute('data-given'))
+  }
+
+  // 1マスだけ残して正解で埋める。残った1マスは盤面全体で確実にNaked Singleになる。
+  function fillAllBlanksButOne(container: HTMLElement) {
+    const solution = currentSolution()
+    const blanks = blankPositions(container)
+    blanks.slice(0, -1).forEach(({ cell, row, col }) => {
+      fireEvent.click(cell)
+      fireEvent.click(numberPadButton(container, solution[row][col]))
+    })
+    return blanks[blanks.length - 1]
+  }
+
+  it('ヒントボタンを押すと対象マスがハイライトされ、続けて押すと理由文が表示される', () => {
+    const { container } = render(<App />)
+    const remaining = fillAllBlanksButOne(container)
+
+    fireEvent.click(screen.getByRole('button', { name: 'ヒント' }))
+
+    expect(remaining.cell).toHaveAttribute('data-hint', 'true')
+    expect(screen.queryByText('単一候補（Naked Single）')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'ヒント' }))
+
+    expect(screen.getByText('単一候補（Naked Single）')).toBeInTheDocument()
+    expect(remaining.cell).toHaveAttribute('data-hint', 'true')
+  })
+
+  it('ヒント表示中に該当マスへ正解を入力するとヒント表示が解除される', () => {
+    const { container } = render(<App />)
+    const solution = currentSolution()
+    const remaining = fillAllBlanksButOne(container)
+
+    fireEvent.click(screen.getByRole('button', { name: 'ヒント' }))
+    expect(remaining.cell).toHaveAttribute('data-hint', 'true')
+
+    fireEvent.click(numberPadButton(container, solution[remaining.row][remaining.col]))
+
+    expect(remaining.cell).not.toHaveAttribute('data-hint')
+  })
+})
+
 describe('Appのマウント間でのlocalStorage永続化', () => {
   it('入力後にアンマウントし再度マウントすると入力内容が復元される', async () => {
     const { container, unmount } = render(<App />)

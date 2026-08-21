@@ -1,7 +1,7 @@
 # useNumberPlaceGame.ts テスト仕様書
 
 対象: `src/hooks/useNumberPlaceGame.ts`
-関連仕様: `docs/spec.md` 3章・4章・4.1章・4.2章・5.1章・5.3章・5.4章・5.6章・7章、Issue #21
+関連仕様: `docs/spec.md` 3章・4章・4.1章・4.2章・5.1章・5.3章・5.4章・5.6章・7章・15章、Issue #21・Issue #22
 
 ## 初期状態
 
@@ -134,3 +134,23 @@
 | 57  | window.confirmがfalseを返すと盤面もモーダル開閉状態も変化しない                             | 空マスに入力後 `openNewGame()` → `confirmNewGame()`、`window.confirm` が `false` を返す             | `newGameModal.isOpen === true` のまま、直前に入力したマスの値が保持される                                   |
 | 58  | closeNewGameを呼ぶとモーダルが閉じ盤面は変化しない                                          | `openNewGame()` の後 `closeNewGame()`                                                               | `newGameModal.isOpen === false`、盤面は変化しない                                                           |
 | 59  | 新規開始した盤面のdifficultyが選択した値でlocalStorageに保存される                          | `openNewGame()` → `selectNewGameDifficulty('expert')` → `confirmNewGame()`                          | `loadGameState()?.difficulty === 'expert'`                                                                  |
+
+## requestHint（ヒント機能、spec.md 15章、Issue #22）
+
+`hint: { status: 'none' | 'notFound' | 'highlight' | 'reason' }` を公開する。`requestHint()` 押下ごとに
+「ハイライトのみ」→「理由表示」→（再計算して）「ハイライトのみ」…と循環する。盤面に変化を与える操作
+（解答入力・消しゴム・メモ変更・Undo）とNew Game確定でヒント状態は破棄される（`none` に戻る）。
+
+見つかった技法がユーザーの誤入力により正解と一致しない場合はそもそも `findHint` 側で除外されるため
+（`hintFinder.test.ts` で担保）、ここではフック側の状態遷移・リセット条件のみを検証する。
+
+| #   | ケース                                                                     | 前提・操作                                                                                     | 期待される結果                                                                          |
+| --- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| 66  | 初期状態ではhintはnone                                                    | フックをマウント                                                                                 | `hint.status === 'none'`                                                                     |
+| 67  | requestHintを呼ぶと該当マスがハイライト状態になり、そのマスが選択される   | 全マスのうち1マスだけを残して正解を入力し（Naked Singleが確実に存在する状態にする）`requestHint()` | `hint.status === 'highlight'`、`hint.hint.position` が残ったマスと一致し、`selected` も同じ位置になる |
+| 68  | ハイライト状態で続けてrequestHintを呼ぶと理由表示状態になる               | 67の状態から続けて `requestHint()`                                                               | `hint.status === 'reason'`、`hint.hint` の内容（position・value）は67と同じ                    |
+| 69  | 理由表示状態で続けてrequestHintを呼ぶと再計算されハイライト状態に戻る     | 68の状態から続けて `requestHint()`                                                               | `hint.status === 'highlight'`                                                                |
+| 70  | 該当技法が見つからない場合はnotFound状態になる                            | `findHint` がnullを返す状況（`numberPlaceService.findHint` をモックしnullを返す）で `requestHint()` | `hint.status === 'notFound'`                                                                 |
+| 71  | ヒント表示中に解答を入力するとヒント状態がnoneにリセットされる            | 67の状態から、ハイライトされたマスに `inputNumber` で正解を入力                                    | `hint.status === 'none'`                                                                     |
+| 72  | ヒント表示中にUndoを呼ぶとヒント状態がnoneにリセットされる                | 67の状態から `undo()`                                                                            | `hint.status === 'none'`                                                                     |
+| 73  | New Game確定後はヒント状態がnoneにリセットされる                          | 67の状態から `confirmNewGame()`（`window.confirm` は不要な進行中なしの状態、または `true` を返すモック） | `hint.status === 'none'`                                                                     |
