@@ -15,6 +15,7 @@ function renderControls(
     onToggleMemoMode: vi.fn(),
     onCheck: vi.fn(),
     onNewGame: vi.fn(),
+    onHint: vi.fn(),
     ...overrides,
   }
   render(<Controls {...props} />)
@@ -28,6 +29,7 @@ describe('Controls 表示', () => {
     expect(screen.getByRole('button', { name: '戻る' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '消しゴム' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /メモ/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'ヒント' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Check' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'New Game' })).toBeInTheDocument()
     for (let n = 1; n <= 9; n++) {
@@ -74,6 +76,12 @@ describe('Controls 操作', () => {
     const props = renderControls()
     await userEvent.click(screen.getByRole('button', { name: 'New Game' }))
     expect(props.onNewGame).toHaveBeenCalledTimes(1)
+  })
+
+  it('ヒントボタンをクリックするとonHintが呼ばれる', async () => {
+    const props = renderControls()
+    await userEvent.click(screen.getByRole('button', { name: 'ヒント' }))
+    expect(props.onHint).toHaveBeenCalledTimes(1)
   })
 })
 

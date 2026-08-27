@@ -260,6 +260,41 @@ describe('Board エラー表示', () => {
   })
 })
 
+describe('Board ヒント表示', () => {
+  it('hintPositionで指定した位置のマスにのみヒントスタイルが付く', () => {
+    render(
+      <Board
+        board={makeBoard()}
+        selected={null}
+        errorCells={[]}
+        hintPosition={{ row: 3, col: 5 }}
+        onSelectCell={() => {}}
+      />,
+    )
+
+    const buttons = screen.getAllByRole('button')
+    const hintButtons = buttons.filter((b) => b.hasAttribute('data-hint'))
+    expect(hintButtons).toHaveLength(1)
+    expect(hintButtons[0]).toBe(buttons[3 * 9 + 5])
+  })
+
+  it('hintPositionがnullのときはどのマスにもヒントスタイルが付かない', () => {
+    render(
+      <Board
+        board={makeBoard()}
+        selected={null}
+        errorCells={[]}
+        hintPosition={null}
+        onSelectCell={() => {}}
+      />,
+    )
+
+    screen.getAllByRole('button').forEach((button) => {
+      expect(button).not.toHaveAttribute('data-hint')
+    })
+  })
+})
+
 describe('Board 操作', () => {
   it('マスをクリックするとonSelectCellがそのマスの位置で呼ばれる', async () => {
     const onSelectCell = vi.fn()

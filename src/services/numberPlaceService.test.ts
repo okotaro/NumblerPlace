@@ -3,6 +3,7 @@ import {
   checkAnswers,
   DEFAULT_DIFFICULTY,
   DIFFICULTIES,
+  findHint,
   generatePuzzle,
   isBoardComplete,
   type Difficulty,
@@ -148,5 +149,38 @@ describe('checkAnswers', () => {
     const result = checkAnswers(userValues, solution)
 
     expect(result[0][0]).toBe(false)
+  })
+})
+
+describe('findHint', () => {
+  // checkAnswers用のsolutionは行/列のみ妥当な簡易配列でブロック制約を満たさないため、
+  // ヒント判定には実在する妥当な数独の完成盤面を使う。
+  const validSolution: number[][] = [
+    [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    [4, 5, 6, 7, 8, 9, 1, 2, 3],
+    [7, 8, 9, 1, 2, 3, 4, 5, 6],
+    [2, 3, 4, 5, 6, 7, 8, 9, 1],
+    [5, 6, 7, 8, 9, 1, 2, 3, 4],
+    [8, 9, 1, 2, 3, 4, 5, 6, 7],
+    [3, 4, 5, 6, 7, 8, 9, 1, 2],
+    [6, 7, 8, 9, 1, 2, 3, 4, 5],
+    [9, 1, 2, 3, 4, 5, 6, 7, 8],
+  ]
+
+  it('returns a Naked Single hint for a board with exactly one blank cell', () => {
+    const userValues: (number | null)[][] = validSolution.map((row) => [...row])
+    userValues[0][0] = null
+
+    const hint = findHint(userValues, validSolution)
+
+    expect(hint?.position).toEqual({ row: 0, col: 0 })
+    expect(hint?.value).toBe(1)
+    expect(hint?.technique).toBe('nakedSingle')
+  })
+
+  it('returns null when no cell is blank', () => {
+    const userValues: (number | null)[][] = validSolution.map((row) => [...row])
+
+    expect(findHint(userValues, validSolution)).toBeNull()
   })
 })
