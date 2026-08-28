@@ -408,10 +408,11 @@ describe('hintFinder findHint', () => {
     ]
 
     const hint = findHint(grid, SOLUTION)
+    if (hint === null || hint.kind !== 'value') throw new Error('expected value hint')
 
-    expect(hint?.technique).toBe('nakedSingle')
-    expect(hint?.position).toEqual({ row: 0, col: 1 })
-    expect(hint?.value).toBe(2)
+    expect(hint.technique).toBe('nakedSingle')
+    expect(hint.position).toEqual({ row: 0, col: 1 })
+    expect(hint.value).toBe(2)
   })
 
   it('Naked Singleが存在せずHidden Singleのみ存在する場合はHidden Singleを返す', () => {
@@ -431,10 +432,11 @@ describe('hintFinder findHint', () => {
     expect(findNakedSingle(grid, SOLUTION)).toBeNull()
 
     const hint = findHint(grid, SOLUTION)
+    if (hint === null || hint.kind !== 'value') throw new Error('expected value hint')
 
-    expect(hint?.technique).toBe('hiddenSingle')
-    expect(hint?.position).toEqual({ row: 1, col: 1 })
-    expect(hint?.value).toBe(5)
+    expect(hint.technique).toBe('hiddenSingle')
+    expect(hint.position).toEqual({ row: 1, col: 1 })
+    expect(hint.value).toBe(5)
   })
 
   it('どちらの技法にも該当するマスがない場合はnullを返す', () => {

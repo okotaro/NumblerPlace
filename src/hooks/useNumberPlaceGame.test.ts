@@ -1016,7 +1016,8 @@ describe('useNumberPlaceGame requestHint', () => {
       throw new Error('expected highlight state with a value hint')
     }
 
-    act(() => result.current.inputNumber(hint.hint.value))
+    const value = hint.hint.value
+    act(() => result.current.inputNumber(value))
 
     expect(result.current.hint.status).toBe('none')
   })
