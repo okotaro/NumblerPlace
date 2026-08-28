@@ -173,9 +173,12 @@ describe('findHint', () => {
 
     const hint = findHint(userValues, validSolution)
 
-    expect(hint?.position).toEqual({ row: 0, col: 0 })
-    expect(hint?.value).toBe(1)
+    expect(hint?.kind).toBe('value')
     expect(hint?.technique).toBe('nakedSingle')
+    if (hint?.kind === 'value') {
+      expect(hint.position).toEqual({ row: 0, col: 0 })
+      expect(hint.value).toBe(1)
+    }
   })
 
   it('returns null when no cell is blank', () => {

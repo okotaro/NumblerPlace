@@ -5,6 +5,7 @@ import type { HintState } from '../hooks/useNumberPlaceGame'
 import type { Hint } from '../services/numberPlaceService'
 
 const SAMPLE_HINT: Hint = {
+  kind: 'value',
   position: { row: 0, col: 4 },
   value: 5,
   technique: 'nakedSingle',

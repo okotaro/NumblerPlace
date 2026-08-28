@@ -30,8 +30,12 @@ function App() {
     confirmNewGame,
   } = useNumberPlaceGame()
 
-  const hintPosition =
-    hint.status === 'highlight' || hint.status === 'reason' ? hint.hint.position : null
+  const hintCells =
+    hint.status === 'highlight' || hint.status === 'reason'
+      ? hint.hint.kind === 'value'
+        ? [{ position: hint.hint.position, role: 'cause' as const }]
+        : hint.hint.cells
+      : []
 
   useKeyboardControls({
     onMove: moveSelection,
@@ -46,7 +50,7 @@ function App() {
           board={board}
           selected={selected}
           errorCells={errorCells}
-          hintPosition={hintPosition}
+          hintCells={hintCells}
           onSelectCell={selectCell}
         />
       </div>

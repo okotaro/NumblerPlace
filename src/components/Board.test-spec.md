@@ -32,12 +32,15 @@
 | 9   | errorCellsで指定した位置のマスにのみエラースタイルが付く   | `errorCells: [{row: 1, col: 2}]`       | (1,2)のマスのみ `data-error="true"`。他のマスには付かない |
 | 10  | errorCellsが空配列のときはどのマスにもエラースタイルが付かない | `errorCells: []`                    | すべてのマスに `data-error` が付かない                     |
 
-## ヒント表示（spec.md 13章・15章、Issue #22）
+## ヒント表示（spec.md 13章・15章、Issue #22・#26）
+
+`hintCells: HintCell[]`（`{ position, role: 'cause' | 'eliminated' }` の配列）を受け取り、
+各マスにroleに応じた `data-hint-role` を付与する。
 
 | #   | ケース                                                       | 前提・入力                       | 期待される結果                                              |
 | --- | --------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------- |
-| 17  | hintPositionで指定した位置のマスにのみヒントスタイルが付く   | `hintPosition: {row: 3, col: 5}`     | (3,5)のマスのみ `data-hint="true"`。他のマスには付かない       |
-| 18  | hintPositionがnullのときはどのマスにもヒントスタイルが付かない | `hintPosition: null`（省略時も同様） | すべてのマスに `data-hint` が付かない                          |
+| 17  | hintCellsで指定した位置のマスにそれぞれroleに応じたヒントスタイルが付く | `hintCells: [{position:{row:3,col:5},role:'cause'},{position:{row:3,col:7},role:'eliminated'}]` | (3,5)に`data-hint-role="cause"`、(3,7)に`data-hint-role="eliminated"`が付く |
+| 18  | hintCellsが空配列（省略時も同様）のときはどのマスにもヒントスタイルが付かない | `hintCells: []`（省略時も同様） | すべてのマスに `data-hint` が付かない                          |
 
 ## 操作
 

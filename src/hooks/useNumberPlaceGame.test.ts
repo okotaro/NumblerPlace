@@ -946,7 +946,7 @@ describe('useNumberPlaceGame requestHint', () => {
     act(() => result.current.requestHint())
 
     expect(result.current.hint.status).toBe('highlight')
-    if (result.current.hint.status === 'highlight') {
+    if (result.current.hint.status === 'highlight' && result.current.hint.hint.kind === 'value') {
       expect(result.current.hint.hint.position).toEqual(remaining)
     }
     expect(result.current.selected).toEqual(remaining)
@@ -977,6 +977,27 @@ describe('useNumberPlaceGame requestHint', () => {
     expect(result.current.hint.status).toBe('highlight')
   })
 
+  it('候補消去型（elimination）のヒントの場合は選択マスを変更しない', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    const eliminationHint: numberPlaceService.EliminationHint = {
+      kind: 'elimination',
+      technique: 'nakedPair',
+      techniqueLabel: '裸のペア（Naked Pair）',
+      reasonText: 'テスト用の理由文',
+      cells: [{ position: { row: 2, col: 2 }, role: 'cause' }],
+      eliminatedCandidates: [{ position: { row: 2, col: 3 }, value: 1 }],
+    }
+    vi.mocked(numberPlaceService.findHint).mockReturnValueOnce(eliminationHint)
+
+    act(() => result.current.requestHint())
+
+    expect(result.current.hint.status).toBe('highlight')
+    if (result.current.hint.status === 'highlight') {
+      expect(result.current.hint.hint).toEqual(eliminationHint)
+    }
+    expect(result.current.selected).toBeNull()
+  })
+
   it('該当技法が見つからない場合はnotFound状態になる', () => {
     const { result } = renderHook(() => useNumberPlaceGame())
     vi.mocked(numberPlaceService.findHint).mockReturnValueOnce(null)
@@ -991,7 +1012,9 @@ describe('useNumberPlaceGame requestHint', () => {
     fillAllBlanksButOne(result)
     act(() => result.current.requestHint())
     const hint = result.current.hint
-    if (hint.status !== 'highlight') throw new Error('expected highlight state')
+    if (hint.status !== 'highlight' || hint.hint.kind !== 'value') {
+      throw new Error('expected highlight state with a value hint')
+    }
 
     act(() => result.current.inputNumber(hint.hint.value))
 

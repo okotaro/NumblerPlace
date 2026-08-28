@@ -224,15 +224,43 @@ export function checkAnswers(
   solution: number[][]
 ): boolean[][]; // trueなら誤り
 
-export type HintTechnique = 'nakedSingle' | 'hiddenSingle';
+export type HintTechnique =
+  | 'nakedSingle'
+  | 'hiddenSingle'
+  | 'nakedPair'
+  | 'nakedTriple'
+  | 'hiddenPair'
+  | 'hiddenTriple'
+  | 'pointingPair'
+  | 'claiming'
+  | 'xWing';
 
-export type Hint = {
+export type HintCell = { position: { row: number; col: number }; role: 'cause' | 'eliminated' };
+export type EliminatedCandidate = { position: { row: number; col: number }; value: number };
+
+// 値確定型: 対象マスの解答が1つに定まる技法（Naked Single・Hidden Single）。
+// 従来通り対象マスを自動選択し、実際の入力はユーザーが行う。
+export type ValueHint = {
+  kind: 'value';
   position: { row: number; col: number };
   value: number;
-  technique: HintTechnique;
+  technique: 'nakedSingle' | 'hiddenSingle';
   techniqueLabel: string; // 例: "単一候補（Naked Single）"
   reasonText: string;     // 例: "このマスは候補が5の1つだけに絞られます"
 };
+
+// 候補消去型: 特定マスの候補を1つ以上除去できることを示す技法（Naked/Hidden Pair・Triple、
+// Pointing Pair、Claiming、X-Wing）。単独では解答を確定しないため、自動選択は行わない。
+export type EliminationHint = {
+  kind: 'elimination';
+  technique: Exclude<HintTechnique, 'nakedSingle' | 'hiddenSingle'>;
+  techniqueLabel: string;
+  reasonText: string;
+  cells: HintCell[];                       // role: 'cause'=技法の根拠マス, 'eliminated'=候補が消えるマス
+  eliminatedCandidates: EliminatedCandidate[];
+};
+
+export type Hint = ValueHint | EliminationHint;
 
 export function findHint(
   userValues: (number | null)[][],
@@ -258,7 +286,8 @@ export function findHint(
 | 誤答（Check後） | 赤系の背景または文字色 |
 | 候補メモ | 小さいグレー文字 |
 | 非候補メモ | 小さいグレー文字＋取り消し線 |
-| ヒント対象マス（Issue #22） | 背景色の優先順位とは独立して、目立つ枠線で常に強調表示する |
+| ヒント対象マス・根拠マス（`role: 'cause'`、Issue #22） | 背景色の優先順位とは独立して、目立つ枠線（黄色系）で常に強調表示する |
+| 候補が消えるマス（`role: 'eliminated'`、Issue #26） | `cause`とは異なる強調表示（赤系の破線枠）で、候補が除去される対象であることを示す |
 
 ## 14. スコープ外・将来検討事項
 
@@ -269,17 +298,46 @@ export function findHint(
 - タイマー・手数カウント・スコアリング
 - 複数セーブスロット・ユーザーアカウント・オンライン対戦要素
 
-## 15. ヒント機能（Issue #22）
+## 15. ヒント機能（Issue #22, #26）
 
-- プレイヤーが次にどこを見ればよいか分からなくなった際に、注目すべきマスと使うべき解法を示して支援する機能。解答（value）を自動入力することはせず、あくまで「このマスに注目すべき」「候補をこう絞れる」という示唆に留め、実際の入力はユーザーに行わせる。
-- 対応技法は次の2つに限定する（ポインティングペア・X-Wing等のより高度な技法は対象外。将来必要になれば別Issueで拡張する）。
-  - **単一候補（Naked Single）**: 対象マスの候補が1つだけに絞られる。
-  - **◯◯内消去（Hidden Single）**: 対象マスの候補は複数残るが、同じ行・列・3x3ブロックのいずれかの中でその値が入りうるマスが対象マスだけになっている。
+- プレイヤーが次にどこを見ればよいか分からなくなった際に、注目すべきマスと使うべき解法を示して支援する機能。解答（value）を自動入力することはせず、あくまで「このマスに注目すべき」「候補をこう絞れる」という示唆に留め、実際の入力・候補メモの更新はユーザーに行わせる。
+- 対応技法は次の9つ（Issue #26で拡張）。技法は大きく2種類に分かれる（12章の`Hint`型・`kind`を参照）。
+  - **値確定型（`kind: 'value'`）**: 対象マスの解答が1つに定まる技法。
+    - **単一候補（Naked Single）**: 対象マスの候補が1つだけに絞られる。
+    - **◯◯内消去（Hidden Single）**: 対象マスの候補は複数残るが、同じ行・列・3x3ブロックのいずれかの中でその値が入りうるマスが対象マスだけになっている。
+  - **候補消去型（`kind: 'elimination'`）**: 特定マスの候補を1つ以上除去できることを示す技法。単独では解答を確定しない。
+    - **裸のペア/トリプル（Naked Pair/Triple）**: 同じ行・列・ブロック内で、候補が同じ2値（3値）に限定されるマスが2マス（3マス）あれば、そのユニット内の他マスから当該値の候補を除去できる。
+    - **隠れたペア/トリプル（Hidden Pair/Triple）**: 同じ行・列・ブロック内で、2値（3値）が入りうるマスが同じ2マス（3マス）に限定されていれば、そのマス自身の他の候補を除去できる。
+    - **ポインティング（Pointing Pair/Triple）**: ブロック内であるマスが行・列いずれかに閉じ込められていれば、そのブロック外の同じ行・列から候補を除去できる。
+    - **クレーミング（Claiming）**: 行・列内であるマスが単一ブロックに閉じ込められていれば、その行・列外の同じブロックから候補を除去できる（ポインティングとクレーミングを合わせて「ロックド候補」と呼ぶ）。
+    - **X-Wing**: ある値について2つの行（列）それぞれで候補が同じ2列（2行）にのみ現れる場合、それらの列（行）の他マスから候補を除去できる。
+  - `findHint`（12章）は難易度の低い順（Naked Single → Hidden Single → Naked Pair → Hidden Pair → Pointing Pair → Claiming → Naked Triple → Hidden Triple → X-Wing）に技法を探索し、実際に候補を1つ以上除去できる（または値を1つ確定できる）場合のみそのヒントを返す。
+  - 技法を追加しても、生成される盤面の難易度によっては依然として `findHint` が `null` を返すケースが残り得る（15.1章参照）。本Issueのスコープは「見つかる確率を上げる」ところまでとし、100%解消は保証しない。
 - ヒントボタン（5.7章）押下ごとに、以下の状態を循環する。
-  1. **ハイライト**: `findHint`（12章）で技法を再計算し、対象マスを盤面上でハイライト表示する（技法名・理由はまだ出さない）。対象マスは自動的に選択状態にもなる（数字の入力はユーザー自身が行う）。
-  2. **理由表示**: 続けてヒントボタンを押すと、直前に計算した対象マスはそのままに、技法名（例:「単一候補（Naked Single）」）と理由文（例:「このマスは候補が5の1つだけに絞られます」）を表示する。
+  1. **ハイライト**: `findHint`（12章）で技法を再計算し、関係するマスを盤面上でハイライト表示する（技法名・理由はまだ出さない）。
+     - 値確定型の場合: 対象マスは従来通り自動的に選択状態になる（数字の入力はユーザー自身が行う）。
+     - 候補消去型の場合: 選択状態は変更しない（`cells` の `role: 'cause'`＝技法の根拠マスと `role: 'eliminated'`＝候補が消えるマスを、それぞれ異なるスタイルでハイライトする。13章参照）。
+  2. **理由表示**: 続けてヒントボタンを押すと、直前に計算したハイライトはそのままに、技法名（例:「単一候補（Naked Single）」）と理由文（例:「このマスは候補が5の1つだけに絞られます」）を表示する。
   3. 理由表示の状態から更にヒントボタンを押すと、新しいヒントを再計算し、1に戻る。
 - 該当する技法のマスが盤面上に1つも見つからない場合（`findHint` が `null` を返す場合）は「ヒントが見つかりませんでした」という旨のメッセージのみを表示し、盤面のハイライトは行わない。
 - 盤面に変化を与える操作（解答入力・消しゴム・メモ変更・Undo）が発生した場合、およびNew Gameで新しい盤面を開始した場合、ヒントの状態は破棄され初期状態（何も表示しない）に戻る。
 - ヒントの利用回数に制限やペナルティは設けない（無制限に利用できる）。
 - ヒントの状態はUndo履歴・New Gameモーダルの開閉状態と同様にブラウザリロードをまたいで保持する必要はない（永続化対象外。10章参照）。
+
+### 15.1 将来拡張候補（未実装・スコープ外、記録のみ）
+
+以下はナンバープレースの解法技法としてさらに高度なものだが、本Issue #26のスコープ外とする。将来的にヒントが
+見つからないケースをさらに減らす必要が生じた場合、別Issueで検討する。
+
+- Swordfish / Jellyfish（X-Wingの3列・4列版）
+- XY-Wing / XYZ-Wing
+- Unique Rectangle
+- Skyscraper / Two-String Kite
+- Simple Coloring / X-Chain
+- ALS（Almost Locked Sets）
+- Forcing Chain
+- BUG（Bivalue Universal Grave）
+
+これらを追加してもなお `findHint` が `null` を返すケースが残る場合、パズル生成ロジック側（`docs/roadmap.md`
+フェーズ3の自作バックトラッキングと関連）で「単一候補・◯◯内消去等の指定した技法群だけで最後まで解ける」ことを
+保証する方式への変更も選択肢になるが、これは生成アルゴリズムに踏み込む大きな変更のため別Issueとする。

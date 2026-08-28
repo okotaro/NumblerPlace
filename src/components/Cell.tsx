@@ -1,12 +1,14 @@
 import type { Cell as CellType } from '../types'
 
+type HintRole = 'cause' | 'eliminated'
+
 type CellProps = {
   cell: CellType
   isSelected: boolean
   isRelated: boolean
   isError: boolean
   isSameValue?: boolean
-  isHint?: boolean
+  hintRole?: HintRole
   onSelect: () => void
   className?: string
 }
@@ -19,7 +21,7 @@ export function Cell({
   isRelated,
   isError,
   isSameValue = false,
-  isHint = false,
+  hintRole,
   onSelect,
   className,
 }: CellProps) {
@@ -32,8 +34,9 @@ export function Cell({
       data-related={isRelated || undefined}
       data-same-value={isSameValue || undefined}
       data-error={isError || undefined}
-      data-hint={isHint || undefined}
-      className={`flex aspect-square w-full items-center justify-center border border-gray-300 text-lg data-[given]:bg-gray-100 data-[given]:font-bold data-[given]:text-gray-700 data-[related]:bg-blue-100 data-[same-value]:bg-amber-100 data-[selected]:bg-blue-300 data-[error]:!bg-red-200 data-[hint]:ring-4 data-[hint]:ring-inset data-[hint]:ring-yellow-400 ${className ?? ''}`}
+      data-hint={hintRole !== undefined || undefined}
+      data-hint-role={hintRole}
+      className={`flex aspect-square w-full items-center justify-center border border-gray-300 text-lg data-[given]:bg-gray-100 data-[given]:font-bold data-[given]:text-gray-700 data-[related]:bg-blue-100 data-[same-value]:bg-amber-100 data-[selected]:bg-blue-300 data-[error]:!bg-red-200 data-[hint-role=cause]:ring-4 data-[hint-role=cause]:ring-inset data-[hint-role=cause]:ring-yellow-400 data-[hint-role=eliminated]:!border-4 data-[hint-role=eliminated]:border-dashed data-[hint-role=eliminated]:!border-red-400 ${className ?? ''}`}
     >
       {cell.value !== null ? (
         <span

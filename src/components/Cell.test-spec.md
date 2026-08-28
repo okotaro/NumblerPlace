@@ -34,12 +34,16 @@
 | 12  | isError=trueのときエラースタイルが付く | `isError: true` | `data-error="true"` が付与される      |
 | 13  | isError=falseのときエラースタイルは付かない | `isError: false` | `data-error` が付与されない       |
 
-## ヒント表示（spec.md 13章・15章、Issue #22）
+## ヒント表示（spec.md 13章・15章、Issue #22・#26）
+
+`hintRole?: 'cause' | 'eliminated'` を受け取り、`cause`（技法の根拠マス）と`eliminated`
+（候補が除去されるマス）で異なる強調スタイルを付与する。
 
 | #   | ケース                                       | 前提・入力      | 期待される結果                        |
 | --- | ----------------------------------------------- | --------------- | -------------------------------------- |
-| 19  | isHint=trueのときヒント用の強調スタイルが付く | `isHint: true`  | `data-hint="true"` が付与される        |
-| 20  | isHint=falseのときヒント用の強調スタイルは付かない | `isHint: false` | `data-hint` が付与されない         |
+| 19  | hintRole="cause"のときヒント用の強調スタイルが付く | `hintRole: 'cause'`  | `data-hint="true"`・`data-hint-role="cause"` が付与される |
+| 19b | hintRole="eliminated"のとき候補除去用の強調スタイルが付く | `hintRole: 'eliminated'`  | `data-hint="true"`・`data-hint-role="eliminated"` が付与される |
+| 20  | hintRoleが未指定のときヒント用の強調スタイルは付かない | `hintRole: undefined` | `data-hint` が付与されない         |
 
 ## 操作
 

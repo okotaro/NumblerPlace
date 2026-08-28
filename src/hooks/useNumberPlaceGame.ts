@@ -255,7 +255,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       }
       return {
         ...state,
-        selected: hint.position,
+        selected: hint.kind === 'value' ? hint.position : state.selected,
         hint: { status: 'highlight', hint },
       }
     }
