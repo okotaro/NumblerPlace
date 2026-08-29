@@ -946,7 +946,7 @@ describe('useNumberPlaceGame requestHint', () => {
     act(() => result.current.requestHint())
 
     expect(result.current.hint.status).toBe('highlight')
-    if (result.current.hint.status === 'highlight') {
+    if (result.current.hint.status === 'highlight' && result.current.hint.hint.kind === 'value') {
       expect(result.current.hint.hint.position).toEqual(remaining)
     }
     expect(result.current.selected).toEqual(remaining)
@@ -991,11 +991,35 @@ describe('useNumberPlaceGame requestHint', () => {
     fillAllBlanksButOne(result)
     act(() => result.current.requestHint())
     const hint = result.current.hint
-    if (hint.status !== 'highlight') throw new Error('expected highlight state')
+    if (hint.status !== 'highlight' || hint.hint.kind !== 'value') {
+      throw new Error('expected highlight state with a value hint')
+    }
 
     act(() => result.current.inputNumber(hint.hint.value))
 
     expect(result.current.hint.status).toBe('none')
+  })
+
+  it('候補消去型のヒントでは選択マスが変化しない', () => {
+    const { result } = renderHook(() => useNumberPlaceGame())
+    const eliminationHint: numberPlaceService.Hint = {
+      kind: 'elimination',
+      technique: 'nakedPair',
+      techniqueLabel: 'ネイキッドペア（Naked Pair）',
+      reasonText: 'テスト用の理由文',
+      cells: [{ position: { row: 0, col: 0 }, role: 'cause' }],
+      eliminatedCandidates: [{ position: { row: 0, col: 1 }, value: 5 }],
+    }
+    vi.mocked(numberPlaceService.findHint).mockReturnValueOnce(eliminationHint)
+    const selectedBefore = result.current.selected
+
+    act(() => result.current.requestHint())
+
+    expect(result.current.hint.status).toBe('highlight')
+    if (result.current.hint.status === 'highlight') {
+      expect(result.current.hint.hint).toEqual(eliminationHint)
+    }
+    expect(result.current.selected).toEqual(selectedBefore)
   })
 
   it('ヒント表示中にUndoを呼ぶとヒント状態がnoneにリセットされる', () => {

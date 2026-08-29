@@ -334,13 +334,13 @@ describe('App ヒント機能', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'ヒント' }))
 
-    expect(remaining.cell).toHaveAttribute('data-hint', 'true')
+    expect(remaining.cell).toHaveAttribute('data-hint', 'cause')
     expect(screen.queryByText('単一候補（Naked Single）')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'ヒント' }))
 
     expect(screen.getByText('単一候補（Naked Single）')).toBeInTheDocument()
-    expect(remaining.cell).toHaveAttribute('data-hint', 'true')
+    expect(remaining.cell).toHaveAttribute('data-hint', 'cause')
   })
 
   it('ヒント表示中に該当マスへ正解を入力するとヒント表示が解除される', () => {
@@ -349,7 +349,7 @@ describe('App ヒント機能', () => {
     const remaining = fillAllBlanksButOne(container)
 
     fireEvent.click(screen.getByRole('button', { name: 'ヒント' }))
-    expect(remaining.cell).toHaveAttribute('data-hint', 'true')
+    expect(remaining.cell).toHaveAttribute('data-hint', 'cause')
 
     fireEvent.click(numberPadButton(container, solution[remaining.row][remaining.col]))
 

@@ -1,11 +1,12 @@
 import { Cell } from './Cell'
+import type { HintCell } from '../services/numberPlaceService'
 import type { Board as BoardType, Position } from '../types'
 
 type BoardProps = {
   board: BoardType
   selected: Position | null
   errorCells: Position[]
-  hintPosition?: Position | null
+  hintCells?: HintCell[]
   onSelectCell: (position: Position) => void
 }
 
@@ -51,7 +52,7 @@ export function Board({
   board,
   selected,
   errorCells,
-  hintPosition = null,
+  hintCells = [],
   onSelectCell,
 }: BoardProps) {
   return (
@@ -71,10 +72,10 @@ export function Board({
           )
           const isSameValue =
             selected !== null && isSameValueCell(position, selected, board)
-          const isHint =
-            hintPosition !== null &&
-            hintPosition.row === rowIndex &&
-            hintPosition.col === colIndex
+          const hintRole = hintCells.find(
+            (hintCell) =>
+              hintCell.position.row === rowIndex && hintCell.position.col === colIndex,
+          )?.role
 
           return (
             <Cell
@@ -84,7 +85,7 @@ export function Board({
               isRelated={isRelated}
               isError={isError}
               isSameValue={isSameValue}
-              isHint={isHint}
+              hintRole={hintRole}
               onSelect={() => onSelectCell(position)}
               className={borderClassName(position)}
             />

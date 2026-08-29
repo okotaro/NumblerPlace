@@ -6,7 +6,7 @@ type CellProps = {
   isRelated: boolean
   isError: boolean
   isSameValue?: boolean
-  isHint?: boolean
+  hintRole?: 'cause' | 'eliminated'
   onSelect: () => void
   className?: string
 }
@@ -19,7 +19,7 @@ export function Cell({
   isRelated,
   isError,
   isSameValue = false,
-  isHint = false,
+  hintRole,
   onSelect,
   className,
 }: CellProps) {
@@ -32,8 +32,8 @@ export function Cell({
       data-related={isRelated || undefined}
       data-same-value={isSameValue || undefined}
       data-error={isError || undefined}
-      data-hint={isHint || undefined}
-      className={`flex aspect-square w-full items-center justify-center border border-gray-300 text-lg data-[given]:bg-gray-100 data-[given]:font-bold data-[given]:text-gray-700 data-[related]:bg-blue-100 data-[same-value]:bg-amber-100 data-[selected]:bg-blue-300 data-[error]:!bg-red-200 data-[hint]:ring-4 data-[hint]:ring-inset data-[hint]:ring-yellow-400 ${className ?? ''}`}
+      data-hint={hintRole}
+      className={`flex aspect-square w-full items-center justify-center border border-gray-300 text-lg data-[given]:bg-gray-100 data-[given]:font-bold data-[given]:text-gray-700 data-[related]:bg-blue-100 data-[same-value]:bg-amber-100 data-[selected]:bg-blue-300 data-[error]:!bg-red-200 data-[hint=cause]:ring-4 data-[hint=cause]:ring-inset data-[hint=cause]:ring-yellow-400 data-[hint=eliminated]:outline data-[hint=eliminated]:outline-4 data-[hint=eliminated]:-outline-offset-4 data-[hint=eliminated]:outline-dashed data-[hint=eliminated]:outline-red-500 ${className ?? ''}`}
     >
       {cell.value !== null ? (
         <span

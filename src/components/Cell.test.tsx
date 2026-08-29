@@ -274,29 +274,43 @@ describe('Cell エラー表示', () => {
 })
 
 describe('Cell ヒント表示', () => {
-  it('isHint=trueのときヒント用の強調スタイルが付く', () => {
+  it('hintRole="cause"のとき根拠マス用の強調スタイルが付く', () => {
     render(
       <Cell
         cell={makeCell()}
         isSelected={false}
         isRelated={false}
         isError={false}
-        isHint={true}
+        hintRole="cause"
         onSelect={() => {}}
       />,
     )
 
-    expect(screen.getByRole('button')).toHaveAttribute('data-hint', 'true')
+    expect(screen.getByRole('button')).toHaveAttribute('data-hint', 'cause')
   })
 
-  it('isHint=falseのときヒント用の強調スタイルは付かない', () => {
+  it('hintRole="eliminated"のとき候補除去マス用の強調スタイルが付く', () => {
     render(
       <Cell
         cell={makeCell()}
         isSelected={false}
         isRelated={false}
         isError={false}
-        isHint={false}
+        hintRole="eliminated"
+        onSelect={() => {}}
+      />,
+    )
+
+    expect(screen.getByRole('button')).toHaveAttribute('data-hint', 'eliminated')
+  })
+
+  it('hintRoleが未指定のときヒント用の強調スタイルは付かない', () => {
+    render(
+      <Cell
+        cell={makeCell()}
+        isSelected={false}
+        isRelated={false}
+        isError={false}
         onSelect={() => {}}
       />,
     )
