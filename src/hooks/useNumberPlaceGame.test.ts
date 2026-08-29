@@ -991,11 +991,15 @@ describe('useNumberPlaceGame requestHint', () => {
     fillAllBlanksButOne(result)
     act(() => result.current.requestHint())
     const hint = result.current.hint
-    if (hint.status !== 'highlight' || hint.hint.kind !== 'value') {
-      throw new Error('expected highlight state with a value hint')
+    if (hint.status !== 'highlight') {
+      throw new Error('expected highlight state')
     }
+    if (hint.hint.kind !== 'value') {
+      throw new Error('expected a value hint')
+    }
+    const valueHint = hint.hint
 
-    act(() => result.current.inputNumber(hint.hint.value))
+    act(() => result.current.inputNumber(valueHint.value))
 
     expect(result.current.hint.status).toBe('none')
   })
