@@ -1,11 +1,13 @@
 # HintPanel.tsx テスト仕様書
 
 対象: `src/components/HintPanel.tsx`
-関連仕様: `docs/spec.md` 15章、Issue #22
+関連仕様: `docs/spec.md` 15章、Issue #22・Issue #26
 
 `useNumberPlaceGame` が公開する `hint: HintState`（`none` / `notFound` / `highlight` / `reason`）を受け取り、
-`reason` のときのみ技法名・理由文を表示する。マスのハイライト自体は `Board`/`Cell` 側の責務であり、
-このコンポーネントはテキスト表示のみを担当する。
+`reason` のときのみ技法名・理由文を表示する。`hint.hint` が値確定型（`kind: 'value'`）・候補消去型
+（`kind: 'elimination'`）のいずれであっても、`techniqueLabel`・`reasonText` はどちらの型も持つ共通フィールド
+のため、このコンポーネントの表示ロジックは`kind`を区別しない。マスのハイライト自体は `Board`/`Cell` 側の
+責務であり、このコンポーネントはテキスト表示のみを担当する。
 
 ## 表示
 

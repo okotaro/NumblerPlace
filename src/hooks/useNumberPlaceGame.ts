@@ -249,13 +249,14 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         return { ...state, hint: { status: 'reason', hint: state.hint.hint } }
       }
       const userValues = state.board.map((row) => row.map((cell) => cell.value))
-      const hint = findHint(userValues, state.solution)
+      const memos = state.board.map((row) => row.map((cell) => cell.memos))
+      const hint = findHint(userValues, state.solution, memos)
       if (hint === null) {
         return { ...state, hint: { status: 'notFound' } }
       }
       return {
         ...state,
-        selected: hint.position,
+        selected: hint.kind === 'value' ? hint.position : state.selected,
         hint: { status: 'highlight', hint },
       }
     }

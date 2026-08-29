@@ -261,32 +261,30 @@ describe('Board エラー表示', () => {
 })
 
 describe('Board ヒント表示', () => {
-  it('hintPositionで指定した位置のマスにのみヒントスタイルが付く', () => {
+  it('hintCellsで指定した位置のマスにそれぞれのroleに応じたヒントスタイルが付く', () => {
     render(
       <Board
         board={makeBoard()}
         selected={null}
         errorCells={[]}
-        hintPosition={{ row: 3, col: 5 }}
+        hintCells={[
+          { position: { row: 3, col: 5 }, role: 'cause' },
+          { position: { row: 3, col: 7 }, role: 'eliminated' },
+        ]}
         onSelectCell={() => {}}
       />,
     )
 
     const buttons = screen.getAllByRole('button')
     const hintButtons = buttons.filter((b) => b.hasAttribute('data-hint'))
-    expect(hintButtons).toHaveLength(1)
-    expect(hintButtons[0]).toBe(buttons[3 * 9 + 5])
+    expect(hintButtons).toHaveLength(2)
+    expect(buttons[3 * 9 + 5]).toHaveAttribute('data-hint', 'cause')
+    expect(buttons[3 * 9 + 7]).toHaveAttribute('data-hint', 'eliminated')
   })
 
-  it('hintPositionがnullのときはどのマスにもヒントスタイルが付かない', () => {
+  it('hintCellsが空配列のとき（省略時も同様）はどのマスにもヒントスタイルが付かない', () => {
     render(
-      <Board
-        board={makeBoard()}
-        selected={null}
-        errorCells={[]}
-        hintPosition={null}
-        onSelectCell={() => {}}
-      />,
+      <Board board={makeBoard()} selected={null} errorCells={[]} onSelectCell={() => {}} />,
     )
 
     screen.getAllByRole('button').forEach((button) => {

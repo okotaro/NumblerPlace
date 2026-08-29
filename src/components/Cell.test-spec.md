@@ -34,12 +34,17 @@
 | 12  | isError=trueのときエラースタイルが付く | `isError: true` | `data-error="true"` が付与される      |
 | 13  | isError=falseのときエラースタイルは付かない | `isError: false` | `data-error` が付与されない       |
 
-## ヒント表示（spec.md 13章・15章、Issue #22）
+## ヒント表示（spec.md 13章・15章、Issue #22・Issue #26）
 
-| #   | ケース                                       | 前提・入力      | 期待される結果                        |
-| --- | ----------------------------------------------- | --------------- | -------------------------------------- |
-| 19  | isHint=trueのときヒント用の強調スタイルが付く | `isHint: true`  | `data-hint="true"` が付与される        |
-| 20  | isHint=falseのときヒント用の強調スタイルは付かない | `isHint: false` | `data-hint` が付与されない         |
+除去系4技法（Naked/Hidden Pair・Triple、Pointing Pair、Claiming、X-Wing）の追加に伴い、
+`isHint: boolean` を `hintRole?: 'cause' | 'eliminated'` に置き換える。`cause`は根拠マス
+（Naked/Hidden Singleの対象マスを含む）、`eliminated`は候補が除去できるマスを表す。
+
+| #   | ケース                                               | 前提・入力                | 期待される結果                        |
+| --- | --------------------------------------------------------- | ------------------------- | -------------------------------------- |
+| 19  | hintRole="cause"のとき根拠マス用の強調スタイルが付く       | `hintRole: 'cause'`       | `data-hint="cause"` が付与される       |
+| 21  | hintRole="eliminated"のとき候補除去マス用の強調スタイルが付く | `hintRole: 'eliminated'`  | `data-hint="eliminated"` が付与される  |
+| 20  | hintRoleが未指定のときヒント用の強調スタイルは付かない     | `hintRole: undefined`     | `data-hint` が付与されない             |
 
 ## 操作
 

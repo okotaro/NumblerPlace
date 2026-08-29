@@ -2,17 +2,49 @@ const SIZE = 9
 
 type Grid = (number | null)[][]
 
-export type HintTechnique = 'nakedSingle' | 'hiddenSingle'
+type MemoMark = 'none' | 'candidate' | 'notCandidate'
+export type MemoGrid = Record<number, MemoMark>[][]
 
-export type Hint = {
-  position: { row: number; col: number }
+type Pos = { row: number; col: number }
+
+export type HintTechnique =
+  | 'nakedSingle'
+  | 'hiddenSingle'
+  | 'nakedPair'
+  | 'nakedTriple'
+  | 'hiddenPair'
+  | 'hiddenTriple'
+  | 'pointingPair'
+  | 'claiming'
+  | 'xWing'
+
+export type HintCell = { position: Pos; role: 'cause' | 'eliminated' }
+export type EliminatedCandidate = { position: Pos; value: number }
+
+export type ValueHint = {
+  kind: 'value'
+  position: Pos
   value: number
-  technique: HintTechnique
+  technique: 'nakedSingle' | 'hiddenSingle'
   techniqueLabel: string
   reasonText: string
 }
 
+export type EliminationHint = {
+  kind: 'elimination'
+  technique: Exclude<HintTechnique, 'nakedSingle' | 'hiddenSingle'>
+  techniqueLabel: string
+  reasonText: string
+  cells: HintCell[]
+  eliminatedCandidates: EliminatedCandidate[]
+}
+
+export type Hint = ValueHint | EliminationHint
+
 type UnitType = 'row' | 'column' | 'block'
+
+const NEXT_HINT_GUIDE =
+  '除去できるマスの非候補メモに反映すると、次のヒントに進めます。'
 
 function computeCandidates(grid: Grid, row: number, col: number): number[] {
   if (grid[row][col] !== null) return []
@@ -41,7 +73,7 @@ function computeCandidates(grid: Grid, row: number, col: number): number[] {
   return candidates
 }
 
-export function findNakedSingle(userValues: Grid, solution: number[][]): Hint | null {
+export function findNakedSingle(userValues: Grid, solution: number[][]): ValueHint | null {
   for (let row = 0; row < SIZE; row++) {
     for (let col = 0; col < SIZE; col++) {
       if (userValues[row][col] !== null) continue
@@ -50,6 +82,7 @@ export function findNakedSingle(userValues: Grid, solution: number[][]): Hint | 
       const value = candidates[0]
       if (solution[row][col] !== value) continue
       return {
+        kind: 'value',
         position: { row, col },
         value,
         technique: 'nakedSingle',
@@ -61,8 +94,8 @@ export function findNakedSingle(userValues: Grid, solution: number[][]): Hint | 
   return null
 }
 
-function unitCells(type: UnitType, index: number): { row: number; col: number }[] {
-  const cells: { row: number; col: number }[] = []
+function unitCells(type: UnitType, index: number): Pos[] {
+  const cells: Pos[] = []
   if (type === 'row') {
     for (let col = 0; col < SIZE; col++) cells.push({ row: index, col })
   } else if (type === 'column') {
@@ -75,6 +108,10 @@ function unitCells(type: UnitType, index: number): { row: number; col: number }[
     }
   }
   return cells
+}
+
+function blockIndexOf(row: number, col: number): number {
+  return Math.floor(row / 3) * 3 + Math.floor(col / 3)
 }
 
 const UNIT_TECHNIQUE_LABELS: Record<UnitType, string> = {
@@ -94,7 +131,7 @@ export function findHiddenSingleInUnit(
   solution: number[][],
   type: UnitType,
   index: number,
-): Hint | null {
+): ValueHint | null {
   const cells = unitCells(type, index)
   for (let value = 1; value <= SIZE; value++) {
     const candidateCells = cells.filter(
@@ -106,6 +143,7 @@ export function findHiddenSingleInUnit(
     const { row, col } = candidateCells[0]
     if (solution[row][col] !== value) continue
     return {
+      kind: 'value',
       position: { row, col },
       value,
       technique: 'hiddenSingle',
@@ -116,7 +154,7 @@ export function findHiddenSingleInUnit(
   return null
 }
 
-export function findHiddenSingle(userValues: Grid, solution: number[][]): Hint | null {
+export function findHiddenSingle(userValues: Grid, solution: number[][]): ValueHint | null {
   const unitTypes: UnitType[] = ['row', 'column', 'block']
   for (const type of unitTypes) {
     for (let index = 0; index < SIZE; index++) {
@@ -127,6 +165,308 @@ export function findHiddenSingle(userValues: Grid, solution: number[][]): Hint |
   return null
 }
 
-export function findHint(userValues: Grid, solution: number[][]): Hint | null {
-  return findNakedSingle(userValues, solution) ?? findHiddenSingle(userValues, solution)
+function computeEffectiveCandidates(grid: Grid, memos: MemoGrid | undefined, row: number, col: number): number[] {
+  const base = computeCandidates(grid, row, col)
+  if (!memos) return base
+  return base.filter((value) => memos[row][col]?.[value] !== 'notCandidate')
+}
+
+function buildCandidatesGrid(grid: Grid, memos?: MemoGrid): number[][][] {
+  const result: number[][][] = []
+  for (let row = 0; row < SIZE; row++) {
+    result.push([])
+    for (let col = 0; col < SIZE; col++) {
+      result[row].push(computeEffectiveCandidates(grid, memos, row, col))
+    }
+  }
+  return result
+}
+
+function combinations<T>(items: T[], size: number): T[][] {
+  if (size === 0) return [[]]
+  if (items.length < size) return []
+  const [first, ...rest] = items
+  const withFirst = combinations(rest, size - 1).map((c) => [first, ...c])
+  const withoutFirst = combinations(rest, size)
+  return [...withFirst, ...withoutFirst]
+}
+
+function positionKey(position: Pos): string {
+  return `${position.row}-${position.col}`
+}
+
+function buildHintCells(causeCells: Pos[], eliminatedCandidates: EliminatedCandidate[]): HintCell[] {
+  const cause: HintCell[] = causeCells.map((position) => ({ position, role: 'cause' }))
+  const causeKeys = new Set(causeCells.map(positionKey))
+  const eliminated: HintCell[] = []
+  const seen = new Set<string>()
+  for (const candidate of eliminatedCandidates) {
+    const key = positionKey(candidate.position)
+    if (causeKeys.has(key) || seen.has(key)) continue
+    seen.add(key)
+    eliminated.push({ position: candidate.position, role: 'eliminated' })
+  }
+  return [...cause, ...eliminated]
+}
+
+const UNIT_TYPES: UnitType[] = ['row', 'column', 'block']
+
+const NAKED_SUBSET_LABELS: Record<2 | 3, { technique: 'nakedPair' | 'nakedTriple'; label: string }> = {
+  2: { technique: 'nakedPair', label: 'ネイキッドペア（Naked Pair）' },
+  3: { technique: 'nakedTriple', label: 'ネイキッドトリプル（Naked Triple）' },
+}
+
+export function findNakedSubset(candidatesGrid: number[][][], grid: Grid, size: 2 | 3): EliminationHint | null {
+  const { technique, label } = NAKED_SUBSET_LABELS[size]
+
+  for (const type of UNIT_TYPES) {
+    for (let index = 0; index < SIZE; index++) {
+      const cells = unitCells(type, index).filter(
+        ({ row, col }) =>
+          grid[row][col] === null &&
+          candidatesGrid[row][col].length >= 2 &&
+          candidatesGrid[row][col].length <= size,
+      )
+
+      for (const subset of combinations(cells, size)) {
+        const union = new Set<number>()
+        subset.forEach(({ row, col }) => candidatesGrid[row][col].forEach((value) => union.add(value)))
+        if (union.size !== size) continue
+
+        const otherCells = unitCells(type, index).filter(
+          ({ row, col }) =>
+            grid[row][col] === null && !subset.some((s) => s.row === row && s.col === col),
+        )
+        const eliminatedCandidates: EliminatedCandidate[] = []
+        for (const { row, col } of otherCells) {
+          for (const value of candidatesGrid[row][col]) {
+            if (union.has(value)) eliminatedCandidates.push({ position: { row, col }, value })
+          }
+        }
+        if (eliminatedCandidates.length === 0) continue
+
+        const values = Array.from(union).sort((a, b) => a - b).join('・')
+        return {
+          kind: 'elimination',
+          technique,
+          techniqueLabel: label,
+          reasonText: `${UNIT_REASON_LABELS[type]}の${subset.length}マスは候補が${values}に限定されるため、${UNIT_REASON_LABELS[type]}の他のマスから${values}を候補から除去できます。${NEXT_HINT_GUIDE}`,
+          cells: buildHintCells(subset, eliminatedCandidates),
+          eliminatedCandidates,
+        }
+      }
+    }
+  }
+  return null
+}
+
+const HIDDEN_SUBSET_LABELS: Record<2 | 3, { technique: 'hiddenPair' | 'hiddenTriple'; label: string }> = {
+  2: { technique: 'hiddenPair', label: 'ハイデンペア（Hidden Pair）' },
+  3: { technique: 'hiddenTriple', label: 'ハイデントリプル（Hidden Triple）' },
+}
+
+export function findHiddenSubset(candidatesGrid: number[][][], grid: Grid, size: 2 | 3): EliminationHint | null {
+  const { technique, label } = HIDDEN_SUBSET_LABELS[size]
+
+  for (const type of UNIT_TYPES) {
+    for (let index = 0; index < SIZE; index++) {
+      const cells = unitCells(type, index).filter(({ row, col }) => grid[row][col] === null)
+      const valuesPresent = Array.from({ length: SIZE }, (_, i) => i + 1).filter((value) =>
+        cells.some(({ row, col }) => candidatesGrid[row][col].includes(value)),
+      )
+
+      for (const valueSet of combinations(valuesPresent, size)) {
+        const cellsWithAny = cells.filter(({ row, col }) =>
+          valueSet.some((value) => candidatesGrid[row][col].includes(value)),
+        )
+        if (cellsWithAny.length !== size) continue
+
+        const eliminatedCandidates: EliminatedCandidate[] = []
+        for (const { row, col } of cellsWithAny) {
+          for (const value of candidatesGrid[row][col]) {
+            if (!valueSet.includes(value)) eliminatedCandidates.push({ position: { row, col }, value })
+          }
+        }
+        if (eliminatedCandidates.length === 0) continue
+
+        const values = [...valueSet].sort((a, b) => a - b).join('・')
+        return {
+          kind: 'elimination',
+          technique,
+          techniqueLabel: label,
+          reasonText: `${UNIT_REASON_LABELS[type]}の中で${values}が入るのはこの${cellsWithAny.length}マスだけなので、このマス自身の他の候補を除去できます。${NEXT_HINT_GUIDE}`,
+          cells: buildHintCells(cellsWithAny, eliminatedCandidates),
+          eliminatedCandidates,
+        }
+      }
+    }
+  }
+  return null
+}
+
+export function findPointingPair(candidatesGrid: number[][][], grid: Grid): EliminationHint | null {
+  for (let block = 0; block < SIZE; block++) {
+    const cellsInBlock = unitCells('block', block).filter(({ row, col }) => grid[row][col] === null)
+
+    for (let value = 1; value <= SIZE; value++) {
+      const withValue = cellsInBlock.filter(({ row, col }) => candidatesGrid[row][col].includes(value))
+      if (withValue.length < 2) continue
+
+      const rows = new Set(withValue.map((c) => c.row))
+      if (rows.size === 1) {
+        const row = withValue[0].row
+        const eliminatedCandidates = unitCells('row', row)
+          .filter(
+            ({ row: r, col }) =>
+              grid[r][col] === null && blockIndexOf(r, col) !== block && candidatesGrid[r][col].includes(value),
+          )
+          .map(({ row: r, col }) => ({ position: { row: r, col }, value }))
+        if (eliminatedCandidates.length > 0) {
+          return {
+            kind: 'elimination',
+            technique: 'pointingPair',
+            techniqueLabel: 'ポインティングペア（Pointing Pair）',
+            reasonText: `このブロックの中で${value}が入るのは行${row + 1}の中だけなので、同じ行の他のブロックから${value}を候補から除去できます。${NEXT_HINT_GUIDE}`,
+            cells: buildHintCells(withValue, eliminatedCandidates),
+            eliminatedCandidates,
+          }
+        }
+      }
+
+      const cols = new Set(withValue.map((c) => c.col))
+      if (cols.size === 1) {
+        const col = withValue[0].col
+        const eliminatedCandidates = unitCells('column', col)
+          .filter(
+            ({ row: r, col: c }) =>
+              grid[r][c] === null && blockIndexOf(r, c) !== block && candidatesGrid[r][c].includes(value),
+          )
+          .map(({ row: r, col: c }) => ({ position: { row: r, col: c }, value }))
+        if (eliminatedCandidates.length > 0) {
+          return {
+            kind: 'elimination',
+            technique: 'pointingPair',
+            techniqueLabel: 'ポインティングペア（Pointing Pair）',
+            reasonText: `このブロックの中で${value}が入るのは列${col + 1}の中だけなので、同じ列の他のブロックから${value}を候補から除去できます。${NEXT_HINT_GUIDE}`,
+            cells: buildHintCells(withValue, eliminatedCandidates),
+            eliminatedCandidates,
+          }
+        }
+      }
+    }
+  }
+  return null
+}
+
+export function findClaiming(candidatesGrid: number[][][], grid: Grid): EliminationHint | null {
+  const lineTypes: UnitType[] = ['row', 'column']
+  for (const type of lineTypes) {
+    for (let index = 0; index < SIZE; index++) {
+      const cellsInLine = unitCells(type, index).filter(({ row, col }) => grid[row][col] === null)
+
+      for (let value = 1; value <= SIZE; value++) {
+        const withValue = cellsInLine.filter(({ row, col }) => candidatesGrid[row][col].includes(value))
+        if (withValue.length < 2) continue
+
+        const blocks = new Set(withValue.map((c) => blockIndexOf(c.row, c.col)))
+        if (blocks.size !== 1) continue
+        const block = blockIndexOf(withValue[0].row, withValue[0].col)
+
+        const eliminatedCandidates = unitCells('block', block)
+          .filter(
+            ({ row, col }) =>
+              grid[row][col] === null &&
+              !(type === 'row' ? row === index : col === index) &&
+              candidatesGrid[row][col].includes(value),
+          )
+          .map(({ row, col }) => ({ position: { row, col }, value }))
+        if (eliminatedCandidates.length === 0) continue
+
+        const lineLabel = type === 'row' ? `行${index + 1}` : `列${index + 1}`
+        return {
+          kind: 'elimination',
+          technique: 'claiming',
+          techniqueLabel: 'クレーミング（Claiming）',
+          reasonText: `${lineLabel}の中で${value}が入るのは同じブロックの中だけなので、そのブロックの他のマスから${value}を候補から除去できます。${NEXT_HINT_GUIDE}`,
+          cells: buildHintCells(withValue, eliminatedCandidates),
+          eliminatedCandidates,
+        }
+      }
+    }
+  }
+  return null
+}
+
+export function findXWing(candidatesGrid: number[][][], grid: Grid): EliminationHint | null {
+  const primaryTypes: UnitType[] = ['row', 'column']
+  for (const primary of primaryTypes) {
+    const secondary: UnitType = primary === 'row' ? 'column' : 'row'
+
+    for (let value = 1; value <= SIZE; value++) {
+      const positionsByIndex: number[][] = []
+      for (let i = 0; i < SIZE; i++) {
+        const cells = unitCells(primary, i).filter(
+          ({ row, col }) => grid[row][col] === null && candidatesGrid[row][col].includes(value),
+        )
+        positionsByIndex[i] = cells.map((c) => (primary === 'row' ? c.col : c.row))
+      }
+
+      for (let a = 0; a < SIZE; a++) {
+        if (positionsByIndex[a].length !== 2) continue
+        for (let b = a + 1; b < SIZE; b++) {
+          if (positionsByIndex[b].length !== 2) continue
+          const [s1, s2] = positionsByIndex[a]
+          if (!positionsByIndex[b].includes(s1) || !positionsByIndex[b].includes(s2)) continue
+
+          const causeCells: Pos[] = [a, b].flatMap((i) =>
+            [s1, s2].map((s) => (primary === 'row' ? { row: i, col: s } : { row: s, col: i })),
+          )
+
+          const eliminatedCandidates: EliminatedCandidate[] = []
+          for (const s of [s1, s2]) {
+            const cells = unitCells(secondary, s).filter(({ row, col }) => {
+              if (grid[row][col] !== null) return false
+              const primaryIndex = primary === 'row' ? row : col
+              if (primaryIndex === a || primaryIndex === b) return false
+              return candidatesGrid[row][col].includes(value)
+            })
+            cells.forEach(({ row, col }) => eliminatedCandidates.push({ position: { row, col }, value }))
+          }
+          if (eliminatedCandidates.length === 0) continue
+
+          const primaryLabel = primary === 'row' ? '行' : '列'
+          const secondaryLabel = secondary === 'row' ? '行' : '列'
+          return {
+            kind: 'elimination',
+            technique: 'xWing',
+            techniqueLabel: 'エックスウィング（X-Wing）',
+            reasonText: `${primaryLabel}${a + 1}と${primaryLabel}${b + 1}で、${value}が入るのは同じ2つの${secondaryLabel}（${secondaryLabel}${s1 + 1}・${secondaryLabel}${s2 + 1}）だけなので、その${secondaryLabel}の他のマスから${value}を候補から除去できます。${NEXT_HINT_GUIDE}`,
+            cells: buildHintCells(causeCells, eliminatedCandidates),
+            eliminatedCandidates,
+          }
+        }
+      }
+    }
+  }
+  return null
+}
+
+export function findHint(userValues: Grid, solution: number[][], memos?: MemoGrid): Hint | null {
+  const nakedSingle = findNakedSingle(userValues, solution)
+  if (nakedSingle !== null) return nakedSingle
+
+  const hiddenSingle = findHiddenSingle(userValues, solution)
+  if (hiddenSingle !== null) return hiddenSingle
+
+  const candidatesGrid = buildCandidatesGrid(userValues, memos)
+
+  return (
+    findNakedSubset(candidatesGrid, userValues, 2) ??
+    findHiddenSubset(candidatesGrid, userValues, 2) ??
+    findPointingPair(candidatesGrid, userValues) ??
+    findClaiming(candidatesGrid, userValues) ??
+    findNakedSubset(candidatesGrid, userValues, 3) ??
+    findHiddenSubset(candidatesGrid, userValues, 3) ??
+    findXWing(candidatesGrid, userValues)
+  )
 }

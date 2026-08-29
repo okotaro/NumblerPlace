@@ -144,13 +144,20 @@
 見つかった技法がユーザーの誤入力により正解と一致しない場合はそもそも `findHint` 側で除外されるため
 （`hintFinder.test.ts` で担保）、ここではフック側の状態遷移・リセット条件のみを検証する。
 
+`findHint`（12章）は3引数目に現在の盤面の非候補メモ（`memos`）を受け取る。フックは `REQUEST_HINT` の
+たびに `state.board` から `memos` グリッドを組み立てて渡す（Issue #26。ユーザーが非候補メモを反映すると
+同じ候補消去型ヒントが繰り返し出続けない、という`hintFinder`側の挙動をフックが正しく配線しているかを
+検証する）。`hint.hint` が `kind: 'value'`（Naked/Hidden Single）の場合のみ対象マスが自動選択され、
+`kind: 'elimination'`（Naked/Hidden Pair・Triple、Pointing Pair、Claiming、X-Wing）の場合は選択状態を変更しない。
+
 | #   | ケース                                                                     | 前提・操作                                                                                     | 期待される結果                                                                          |
 | --- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
 | 66  | 初期状態ではhintはnone                                                    | フックをマウント                                                                                 | `hint.status === 'none'`                                                                     |
-| 67  | requestHintを呼ぶと該当マスがハイライト状態になり、そのマスが選択される   | 全マスのうち1マスだけを残して正解を入力し（Naked Singleが確実に存在する状態にする）`requestHint()` | `hint.status === 'highlight'`、`hint.hint.position` が残ったマスと一致し、`selected` も同じ位置になる |
+| 67  | requestHintを呼ぶと該当マスがハイライト状態になり、そのマスが選択される   | 全マスのうち1マスだけを残して正解を入力し（Naked Singleが確実に存在する状態にする）`requestHint()` | `hint.status === 'highlight'`、`hint.hint.kind === 'value'`かつ`position`が残ったマスと一致し、`selected` も同じ位置になる |
 | 68  | ハイライト状態で続けてrequestHintを呼ぶと理由表示状態になる               | 67の状態から続けて `requestHint()`                                                               | `hint.status === 'reason'`、`hint.hint` の内容（position・value）は67と同じ                    |
 | 69  | 理由表示状態で続けてrequestHintを呼ぶと再計算されハイライト状態に戻る     | 68の状態から続けて `requestHint()`                                                               | `hint.status === 'highlight'`                                                                |
 | 70  | 該当技法が見つからない場合はnotFound状態になる                            | `findHint` がnullを返す状況（`numberPlaceService.findHint` をモックしnullを返す）で `requestHint()` | `hint.status === 'notFound'`                                                                 |
 | 71  | ヒント表示中に解答を入力するとヒント状態がnoneにリセットされる            | 67の状態から、ハイライトされたマスに `inputNumber` で正解を入力                                    | `hint.status === 'none'`                                                                     |
 | 72  | ヒント表示中にUndoを呼ぶとヒント状態がnoneにリセットされる                | 67の状態から `undo()`                                                                            | `hint.status === 'none'`                                                                     |
 | 73  | New Game確定後はヒント状態がnoneにリセットされる                          | 67の状態から `confirmNewGame()`（`window.confirm` は不要な進行中なしの状態、または `true` を返すモック） | `hint.status === 'none'`                                                                     |
+| 74  | 候補消去型（`kind: 'elimination'`）のヒントでは選択マスが変化しない       | `numberPlaceService.findHint` を候補消去型のHintを返すようモックして `requestHint()`               | `hint.status === 'highlight'`、`selected` は呼び出し前と変わらない                            |
