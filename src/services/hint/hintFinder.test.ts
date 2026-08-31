@@ -4,9 +4,11 @@ import {
   findHiddenSingleInUnit,
   findHiddenSubset,
   findHint,
+  findJellyfish,
   findNakedSingle,
   findNakedSubset,
   findPointingPair,
+  findSwordfish,
   findXWing,
   type MemoGrid,
 } from './hintFinder'
@@ -216,6 +218,50 @@ describe('hintFinder findNakedSubset', () => {
       ]),
     )
   })
+
+  it('候補が同じ4値に限定される4マスをNaked Quadとして検出する', () => {
+    const grid = filledGrid()
+    grid[0][0] = null
+    grid[0][1] = null
+    grid[0][2] = null
+    grid[0][3] = null
+    grid[0][4] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][0] = [1, 2]
+    candidatesGrid[0][1] = [2, 3]
+    candidatesGrid[0][2] = [3, 4]
+    candidatesGrid[0][3] = [1, 4]
+    candidatesGrid[0][4] = [1, 2, 3, 4, 5]
+
+    const hint = findNakedSubset(candidatesGrid, grid, 4)
+
+    expect(hint?.technique).toBe('nakedQuad')
+    expect(hint?.eliminatedCandidates).toEqual(
+      expect.arrayContaining([
+        { position: { row: 0, col: 4 }, value: 1 },
+        { position: { row: 0, col: 4 }, value: 2 },
+        { position: { row: 0, col: 4 }, value: 3 },
+        { position: { row: 0, col: 4 }, value: 4 },
+      ]),
+    )
+  })
+
+  it('Naked Quadの条件を満たしても除去先の候補が残っていない場合はnullを返す', () => {
+    const grid = filledGrid()
+    grid[0][0] = null
+    grid[0][1] = null
+    grid[0][2] = null
+    grid[0][3] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][0] = [1, 2]
+    candidatesGrid[0][1] = [2, 3]
+    candidatesGrid[0][2] = [3, 4]
+    candidatesGrid[0][3] = [1, 4]
+
+    expect(findNakedSubset(candidatesGrid, grid, 4)).toBeNull()
+  })
 })
 
 describe('hintFinder findHiddenSubset', () => {
@@ -244,6 +290,41 @@ describe('hintFinder findHiddenSubset', () => {
     candidatesGrid[0][1] = [1, 2]
 
     expect(findHiddenSubset(candidatesGrid, grid, 2)).toBeNull()
+  })
+
+  it('4値が入りうるマスが同じ4マスに限定される場合Hidden Quadとして検出する', () => {
+    const grid = filledGrid()
+    grid[0][0] = null
+    grid[0][1] = null
+    grid[0][2] = null
+    grid[0][3] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][0] = [1, 2, 9]
+    candidatesGrid[0][1] = [2, 3]
+    candidatesGrid[0][2] = [3, 4]
+    candidatesGrid[0][3] = [1, 4]
+
+    const hint = findHiddenSubset(candidatesGrid, grid, 4)
+
+    expect(hint?.technique).toBe('hiddenQuad')
+    expect(hint?.eliminatedCandidates).toEqual([{ position: { row: 0, col: 0 }, value: 9 }])
+  })
+
+  it('Hidden Quadの条件を満たしても除去できる余分な候補がない場合はnullを返す', () => {
+    const grid = filledGrid()
+    grid[0][0] = null
+    grid[0][1] = null
+    grid[0][2] = null
+    grid[0][3] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][0] = [1, 2]
+    candidatesGrid[0][1] = [2, 3]
+    candidatesGrid[0][2] = [3, 4]
+    candidatesGrid[0][3] = [1, 4]
+
+    expect(findHiddenSubset(candidatesGrid, grid, 4)).toBeNull()
   })
 })
 
@@ -361,6 +442,108 @@ describe('hintFinder findXWing', () => {
     candidatesGrid[3][6] = [7, 9]
 
     expect(findXWing(candidatesGrid, grid)).toBeNull()
+  })
+})
+
+describe('hintFinder findSwordfish', () => {
+  it('3行で候補が同じ3列にのみ現れる場合、その3列の他マスから除去する', () => {
+    const grid = filledGrid()
+    grid[0][1] = null
+    grid[0][4] = null
+    grid[3][4] = null
+    grid[3][7] = null
+    grid[5][1] = null
+    grid[5][7] = null
+    grid[6][1] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][1] = [6]
+    candidatesGrid[0][4] = [6]
+    candidatesGrid[3][4] = [6]
+    candidatesGrid[3][7] = [6]
+    candidatesGrid[5][1] = [6]
+    candidatesGrid[5][7] = [6]
+    candidatesGrid[6][1] = [6]
+
+    const hint = findSwordfish(candidatesGrid, grid)
+
+    expect(hint?.technique).toBe('swordfish')
+    expect(hint?.eliminatedCandidates).toEqual([{ position: { row: 6, col: 1 }, value: 6 }])
+  })
+
+  it('除去先の候補が残っていない場合はnullを返す', () => {
+    const grid = filledGrid()
+    grid[0][1] = null
+    grid[0][4] = null
+    grid[3][4] = null
+    grid[3][7] = null
+    grid[5][1] = null
+    grid[5][7] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][1] = [6]
+    candidatesGrid[0][4] = [6]
+    candidatesGrid[3][4] = [6]
+    candidatesGrid[3][7] = [6]
+    candidatesGrid[5][1] = [6]
+    candidatesGrid[5][7] = [6]
+
+    expect(findSwordfish(candidatesGrid, grid)).toBeNull()
+  })
+})
+
+describe('hintFinder findJellyfish', () => {
+  it('4行で候補が同じ4列にのみ現れる場合、その4列の他マスから除去する', () => {
+    const grid = filledGrid()
+    grid[0][1] = null
+    grid[0][3] = null
+    grid[3][3] = null
+    grid[3][5] = null
+    grid[5][5] = null
+    grid[5][8] = null
+    grid[7][8] = null
+    grid[7][1] = null
+    grid[8][1] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][1] = [8]
+    candidatesGrid[0][3] = [8]
+    candidatesGrid[3][3] = [8]
+    candidatesGrid[3][5] = [8]
+    candidatesGrid[5][5] = [8]
+    candidatesGrid[5][8] = [8]
+    candidatesGrid[7][8] = [8]
+    candidatesGrid[7][1] = [8]
+    candidatesGrid[8][1] = [8]
+
+    const hint = findJellyfish(candidatesGrid, grid)
+
+    expect(hint?.technique).toBe('jellyfish')
+    expect(hint?.eliminatedCandidates).toEqual([{ position: { row: 8, col: 1 }, value: 8 }])
+  })
+
+  it('除去先の候補が残っていない場合はnullを返す', () => {
+    const grid = filledGrid()
+    grid[0][1] = null
+    grid[0][3] = null
+    grid[3][3] = null
+    grid[3][5] = null
+    grid[5][5] = null
+    grid[5][8] = null
+    grid[7][8] = null
+    grid[7][1] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][1] = [8]
+    candidatesGrid[0][3] = [8]
+    candidatesGrid[3][3] = [8]
+    candidatesGrid[3][5] = [8]
+    candidatesGrid[5][5] = [8]
+    candidatesGrid[5][8] = [8]
+    candidatesGrid[7][8] = [8]
+    candidatesGrid[7][1] = [8]
+
+    expect(findJellyfish(candidatesGrid, grid)).toBeNull()
   })
 })
 

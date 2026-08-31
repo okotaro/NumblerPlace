@@ -12,11 +12,15 @@ export type HintTechnique =
   | 'hiddenSingle'
   | 'nakedPair'
   | 'nakedTriple'
+  | 'nakedQuad'
   | 'hiddenPair'
   | 'hiddenTriple'
+  | 'hiddenQuad'
   | 'pointingPair'
   | 'claiming'
   | 'xWing'
+  | 'swordfish'
+  | 'jellyfish'
 
 export type HintCell = { position: Pos; role: 'cause' | 'eliminated' }
 export type EliminatedCandidate = { position: Pos; value: number }
@@ -211,12 +215,16 @@ function buildHintCells(causeCells: Pos[], eliminatedCandidates: EliminatedCandi
 
 const UNIT_TYPES: UnitType[] = ['row', 'column', 'block']
 
-const NAKED_SUBSET_LABELS: Record<2 | 3, { technique: 'nakedPair' | 'nakedTriple'; label: string }> = {
+const NAKED_SUBSET_LABELS: Record<
+  2 | 3 | 4,
+  { technique: 'nakedPair' | 'nakedTriple' | 'nakedQuad'; label: string }
+> = {
   2: { technique: 'nakedPair', label: 'ネイキッドペア（Naked Pair）' },
   3: { technique: 'nakedTriple', label: 'ネイキッドトリプル（Naked Triple）' },
+  4: { technique: 'nakedQuad', label: 'ネイキッドクアッド（Naked Quad）' },
 }
 
-export function findNakedSubset(candidatesGrid: number[][][], grid: Grid, size: 2 | 3): EliminationHint | null {
+export function findNakedSubset(candidatesGrid: number[][][], grid: Grid, size: 2 | 3 | 4): EliminationHint | null {
   const { technique, label } = NAKED_SUBSET_LABELS[size]
 
   for (const type of UNIT_TYPES) {
@@ -260,12 +268,16 @@ export function findNakedSubset(candidatesGrid: number[][][], grid: Grid, size: 
   return null
 }
 
-const HIDDEN_SUBSET_LABELS: Record<2 | 3, { technique: 'hiddenPair' | 'hiddenTriple'; label: string }> = {
+const HIDDEN_SUBSET_LABELS: Record<
+  2 | 3 | 4,
+  { technique: 'hiddenPair' | 'hiddenTriple' | 'hiddenQuad'; label: string }
+> = {
   2: { technique: 'hiddenPair', label: 'ハイデンペア（Hidden Pair）' },
   3: { technique: 'hiddenTriple', label: 'ハイデントリプル（Hidden Triple）' },
+  4: { technique: 'hiddenQuad', label: 'ハイデンクアッド（Hidden Quad）' },
 }
 
-export function findHiddenSubset(candidatesGrid: number[][][], grid: Grid, size: 2 | 3): EliminationHint | null {
+export function findHiddenSubset(candidatesGrid: number[][][], grid: Grid, size: 2 | 3 | 4): EliminationHint | null {
   const { technique, label } = HIDDEN_SUBSET_LABELS[size]
 
   for (const type of UNIT_TYPES) {
@@ -397,8 +409,16 @@ export function findClaiming(candidatesGrid: number[][][], grid: Grid): Eliminat
   return null
 }
 
-export function findXWing(candidatesGrid: number[][][], grid: Grid): EliminationHint | null {
+const FISH_LABELS: Record<2 | 3 | 4, { technique: 'xWing' | 'swordfish' | 'jellyfish'; label: string }> = {
+  2: { technique: 'xWing', label: 'エックスウィング（X-Wing）' },
+  3: { technique: 'swordfish', label: 'スワードフィッシュ（Swordfish）' },
+  4: { technique: 'jellyfish', label: 'ジェリーフィッシュ（Jellyfish）' },
+}
+
+function findFish(candidatesGrid: number[][][], grid: Grid, size: 2 | 3 | 4): EliminationHint | null {
+  const { technique, label } = FISH_LABELS[size]
   const primaryTypes: UnitType[] = ['row', 'column']
+
   for (const primary of primaryTypes) {
     const secondary: UnitType = primary === 'row' ? 'column' : 'row'
 
@@ -411,44 +431,63 @@ export function findXWing(candidatesGrid: number[][][], grid: Grid): Elimination
         positionsByIndex[i] = cells.map((c) => (primary === 'row' ? c.col : c.row))
       }
 
-      for (let a = 0; a < SIZE; a++) {
-        if (positionsByIndex[a].length !== 2) continue
-        for (let b = a + 1; b < SIZE; b++) {
-          if (positionsByIndex[b].length !== 2) continue
-          const [s1, s2] = positionsByIndex[a]
-          if (!positionsByIndex[b].includes(s1) || !positionsByIndex[b].includes(s2)) continue
+      const candidateLines: number[] = []
+      for (let i = 0; i < SIZE; i++) {
+        if (positionsByIndex[i].length >= 2 && positionsByIndex[i].length <= size) candidateLines.push(i)
+      }
 
-          const causeCells: Pos[] = [a, b].flatMap((i) =>
-            [s1, s2].map((s) => (primary === 'row' ? { row: i, col: s } : { row: s, col: i })),
-          )
+      for (const combo of combinations(candidateLines, size)) {
+        const union = new Set<number>()
+        combo.forEach((i) => positionsByIndex[i].forEach((s) => union.add(s)))
+        if (union.size !== size) continue
 
-          const eliminatedCandidates: EliminatedCandidate[] = []
-          for (const s of [s1, s2]) {
-            const cells = unitCells(secondary, s).filter(({ row, col }) => {
-              if (grid[row][col] !== null) return false
-              const primaryIndex = primary === 'row' ? row : col
-              if (primaryIndex === a || primaryIndex === b) return false
-              return candidatesGrid[row][col].includes(value)
-            })
-            cells.forEach(({ row, col }) => eliminatedCandidates.push({ position: { row, col }, value }))
-          }
-          if (eliminatedCandidates.length === 0) continue
+        const causeCells: Pos[] = combo.flatMap((i) =>
+          positionsByIndex[i].map((s) => (primary === 'row' ? { row: i, col: s } : { row: s, col: i })),
+        )
 
-          const primaryLabel = primary === 'row' ? '行' : '列'
-          const secondaryLabel = secondary === 'row' ? '行' : '列'
-          return {
-            kind: 'elimination',
-            technique: 'xWing',
-            techniqueLabel: 'エックスウィング（X-Wing）',
-            reasonText: `${primaryLabel}${a + 1}と${primaryLabel}${b + 1}で、${value}が入るのは同じ2つの${secondaryLabel}（${secondaryLabel}${s1 + 1}・${secondaryLabel}${s2 + 1}）だけなので、その${secondaryLabel}の他のマスから${value}を候補から除去できます。${NEXT_HINT_GUIDE}`,
-            cells: buildHintCells(causeCells, eliminatedCandidates),
-            eliminatedCandidates,
-          }
+        const eliminatedCandidates: EliminatedCandidate[] = []
+        for (const s of union) {
+          const cells = unitCells(secondary, s).filter(({ row, col }) => {
+            if (grid[row][col] !== null) return false
+            const primaryIndex = primary === 'row' ? row : col
+            if (combo.includes(primaryIndex)) return false
+            return candidatesGrid[row][col].includes(value)
+          })
+          cells.forEach(({ row, col }) => eliminatedCandidates.push({ position: { row, col }, value }))
+        }
+        if (eliminatedCandidates.length === 0) continue
+
+        const primaryLabel = primary === 'row' ? '行' : '列'
+        const secondaryLabel = secondary === 'row' ? '行' : '列'
+        const primaryLines = combo.map((i) => `${primaryLabel}${i + 1}`).join('と')
+        const secondaryLines = Array.from(union)
+          .sort((a, b) => a - b)
+          .map((s) => `${secondaryLabel}${s + 1}`)
+          .join('・')
+        return {
+          kind: 'elimination',
+          technique,
+          techniqueLabel: label,
+          reasonText: `${primaryLines}で、${value}が入るのは同じ${size}つの${secondaryLabel}（${secondaryLines}）だけなので、その${secondaryLabel}の他のマスから${value}を候補から除去できます。${NEXT_HINT_GUIDE}`,
+          cells: buildHintCells(causeCells, eliminatedCandidates),
+          eliminatedCandidates,
         }
       }
     }
   }
   return null
+}
+
+export function findXWing(candidatesGrid: number[][][], grid: Grid): EliminationHint | null {
+  return findFish(candidatesGrid, grid, 2)
+}
+
+export function findSwordfish(candidatesGrid: number[][][], grid: Grid): EliminationHint | null {
+  return findFish(candidatesGrid, grid, 3)
+}
+
+export function findJellyfish(candidatesGrid: number[][][], grid: Grid): EliminationHint | null {
+  return findFish(candidatesGrid, grid, 4)
 }
 
 export function findHint(userValues: Grid, solution: number[][], memos?: MemoGrid): Hint | null {
@@ -467,6 +506,10 @@ export function findHint(userValues: Grid, solution: number[][], memos?: MemoGri
     findClaiming(candidatesGrid, userValues) ??
     findNakedSubset(candidatesGrid, userValues, 3) ??
     findHiddenSubset(candidatesGrid, userValues, 3) ??
-    findXWing(candidatesGrid, userValues)
+    findNakedSubset(candidatesGrid, userValues, 4) ??
+    findHiddenSubset(candidatesGrid, userValues, 4) ??
+    findXWing(candidatesGrid, userValues) ??
+    findSwordfish(candidatesGrid, userValues) ??
+    findJellyfish(candidatesGrid, userValues)
   )
 }
