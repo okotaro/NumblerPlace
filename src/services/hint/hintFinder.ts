@@ -21,6 +21,8 @@ export type HintTechnique =
   | 'xWing'
   | 'swordfish'
   | 'jellyfish'
+  | 'xyWing'
+  | 'xyzWing'
 
 export type HintCell = { position: Pos; role: 'cause' | 'eliminated' }
 export type EliminatedCandidate = { position: Pos; value: number }
@@ -490,6 +492,132 @@ export function findJellyfish(candidatesGrid: number[][][], grid: Grid): Elimina
   return findFish(candidatesGrid, grid, 4)
 }
 
+function samePos(a: Pos, b: Pos): boolean {
+  return a.row === b.row && a.col === b.col
+}
+
+function cellsSee(a: Pos, b: Pos): boolean {
+  if (samePos(a, b)) return false
+  return a.row === b.row || a.col === b.col || blockIndexOf(a.row, a.col) === blockIndexOf(b.row, b.col)
+}
+
+function emptyCells(grid: Grid): Pos[] {
+  const cells: Pos[] = []
+  for (let row = 0; row < SIZE; row++) {
+    for (let col = 0; col < SIZE; col++) {
+      if (grid[row][col] === null) cells.push({ row, col })
+    }
+  }
+  return cells
+}
+
+export function findXYWing(candidatesGrid: number[][][], grid: Grid): EliminationHint | null {
+  const cells = emptyCells(grid)
+
+  for (const pivot of cells) {
+    const pivotCandidates = candidatesGrid[pivot.row][pivot.col]
+    if (pivotCandidates.length !== 2) continue
+    const [x, y] = pivotCandidates
+
+    const neighbors = cells.filter(
+      (c) => cellsSee(c, pivot) && candidatesGrid[c.row][c.col].length === 2,
+    )
+
+    for (const w1 of neighbors) {
+      const w1Candidates = candidatesGrid[w1.row][w1.col]
+      const sharedWithPivot = w1Candidates.filter((v) => pivotCandidates.includes(v))
+      if (sharedWithPivot.length !== 1) continue
+      const sharedValue = sharedWithPivot[0]
+      const otherPivotValue = sharedValue === x ? y : x
+      const z = w1Candidates.find((v) => v !== sharedValue)
+      if (z === undefined || z === x || z === y) continue
+
+      for (const w2 of neighbors) {
+        if (samePos(w2, w1)) continue
+        const w2Candidates = candidatesGrid[w2.row][w2.col]
+        if (!(w2Candidates.includes(otherPivotValue) && w2Candidates.includes(z))) continue
+
+        const eliminatedCandidates: EliminatedCandidate[] = cells
+          .filter(
+            (c) =>
+              !samePos(c, pivot) &&
+              !samePos(c, w1) &&
+              !samePos(c, w2) &&
+              cellsSee(c, w1) &&
+              cellsSee(c, w2) &&
+              candidatesGrid[c.row][c.col].includes(z),
+          )
+          .map((c) => ({ position: c, value: z }))
+        if (eliminatedCandidates.length === 0) continue
+
+        return {
+          kind: 'elimination',
+          technique: 'xyWing',
+          techniqueLabel: 'XYウイング（XY-Wing）',
+          reasonText: `軸マスの候補${x}・${y}と、それぞれを共有する2マスの候補${z}から、両方を見ているマスの候補${z}を除去できます。${NEXT_HINT_GUIDE}`,
+          cells: buildHintCells([pivot, w1, w2], eliminatedCandidates),
+          eliminatedCandidates,
+        }
+      }
+    }
+  }
+  return null
+}
+
+export function findXYZWing(candidatesGrid: number[][][], grid: Grid): EliminationHint | null {
+  const cells = emptyCells(grid)
+
+  for (const pivot of cells) {
+    const pivotCandidates = candidatesGrid[pivot.row][pivot.col]
+    if (pivotCandidates.length !== 3) continue
+
+    const neighbors = cells.filter(
+      (c) =>
+        cellsSee(c, pivot) &&
+        candidatesGrid[c.row][c.col].length === 2 &&
+        candidatesGrid[c.row][c.col].every((v) => pivotCandidates.includes(v)),
+    )
+
+    for (const w1 of neighbors) {
+      const w1Candidates = candidatesGrid[w1.row][w1.col]
+      for (const w2 of neighbors) {
+        if (samePos(w2, w1)) continue
+        const w2Candidates = candidatesGrid[w2.row][w2.col]
+
+        const union = new Set([...w1Candidates, ...w2Candidates])
+        if (union.size !== 3) continue
+        const intersection = w1Candidates.filter((v) => w2Candidates.includes(v))
+        if (intersection.length !== 1) continue
+        const z = intersection[0]
+
+        const eliminatedCandidates: EliminatedCandidate[] = cells
+          .filter(
+            (c) =>
+              !samePos(c, pivot) &&
+              !samePos(c, w1) &&
+              !samePos(c, w2) &&
+              cellsSee(c, pivot) &&
+              cellsSee(c, w1) &&
+              cellsSee(c, w2) &&
+              candidatesGrid[c.row][c.col].includes(z),
+          )
+          .map((c) => ({ position: c, value: z }))
+        if (eliminatedCandidates.length === 0) continue
+
+        return {
+          kind: 'elimination',
+          technique: 'xyzWing',
+          techniqueLabel: 'XYZウイング（XYZ-Wing）',
+          reasonText: `軸マスの候補${pivotCandidates.join('・')}と、それぞれを共有する2マスの候補${z}から、軸マス・両マスすべてを見ているマスの候補${z}を除去できます。${NEXT_HINT_GUIDE}`,
+          cells: buildHintCells([pivot, w1, w2], eliminatedCandidates),
+          eliminatedCandidates,
+        }
+      }
+    }
+  }
+  return null
+}
+
 export function findHint(userValues: Grid, solution: number[][], memos?: MemoGrid): Hint | null {
   const nakedSingle = findNakedSingle(userValues, solution)
   if (nakedSingle !== null) return nakedSingle
@@ -510,6 +638,8 @@ export function findHint(userValues: Grid, solution: number[][], memos?: MemoGri
     findHiddenSubset(candidatesGrid, userValues, 4) ??
     findXWing(candidatesGrid, userValues) ??
     findSwordfish(candidatesGrid, userValues) ??
-    findJellyfish(candidatesGrid, userValues)
+    findJellyfish(candidatesGrid, userValues) ??
+    findXYWing(candidatesGrid, userValues) ??
+    findXYZWing(candidatesGrid, userValues)
   )
 }
