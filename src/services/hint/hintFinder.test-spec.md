@@ -4,10 +4,10 @@
 関連仕様: `docs/spec.md` 15章、Issue #22、Issue #26、Issue #32
 
 盤面全体を9x9の `(number | null)[][]`（ユーザーの現在の入力値）と、対応する正解 `number[][]` で表す。
-対応技法は次の13技法。
+対応技法は次の15技法。
 
 - **値確定型**（`kind: 'value'`）: 単一候補（Naked Single）、◯◯内消去（Hidden Single）
-- **候補消去型**（`kind: 'elimination'`）: Naked Pair/Triple/Quad、Hidden Pair/Triple/Quad、Pointing Pair、Claiming、X-Wing/Swordfish/Jellyfish
+- **候補消去型**（`kind: 'elimination'`）: Naked Pair/Triple/Quad、Hidden Pair/Triple/Quad、Pointing Pair、Claiming、X-Wing/Swordfish/Jellyfish、XY-Wing/XYZ-Wing
 
 候補消去型の技法は、盤面の確定値だけでなくユーザーが入力した非候補メモ（3引数目 `memos`）も踏まえた
 「実効候補」に対して判定する。これにより、ユーザーがヒントに従って非候補メモを反映すると、
@@ -88,10 +88,34 @@
 | 15c | 4行で候補が同じ4列にのみ現れる場合、その4列の他マスから除去する（Jellyfish） | 行A・B・C・Dでそれぞれ値8の候補が列1・3・5・8のうち2〜4列に現れ、和集合がちょうど列1・3・5・8の4列になる。列1の対象行以外の1マスにも候補8がある | `findJellyfish`が`technique: 'jellyfish'`のヒントを返し、`eliminatedCandidates`に`{value:8}`が含まれる |
 | 15d | Jellyfishの条件を満たしても除去先の候補が残っていない場合はnullを返す（no-op） | 同じ条件だが、列1・3・5・8の対象行以外に候補8を持つマスがない                                       | `findJellyfish`が`null`を返す                                                          |
 
+## findXYWing（ウイング系）
+
+候補が2つ`{X,Y}`の軸（pivot）マスと、pivotと同じユニット（行・列・ブロック）を共有する2つの翼（wing）マス
+（候補`{X,Z}`と`{Y,Z}`）から成る。両wingマスを共に見ている（同じ行・列・ブロックのいずれかを共有する）
+マスから候補`Z`を除去できる。`findNakedSubset`等と同様、`candidatesGrid`と`grid`を直接引数に取る。
+
+| #   | ケース                                                             | 前提・入力                                                                 | 期待される結果                                                                                    |
+| --- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 22  | pivot・2つのwingマスからXY-Wingを検出し、両wingを共に見ているマスから候補を除去する | pivot(0,0)候補`{1,2}`、wing(0,4)候補`{1,3}`（pivotと同じ行）、wing(4,0)候補`{2,3}`（pivotと同じ列）、両wingを共に見ている(4,4)に候補`{3,5}` | `technique: 'xyWing'`、`cells`にpivot・両wingマスが`role:'cause'`で含まれ、`eliminatedCandidates`に`{position:{row:4,col:4}, value:3}`が含まれる |
+| 23  | XY-Wingの条件を満たしても除去先の候補が残っていない場合はnullを返す（no-op） | 22と同じ配置だが、(4,4)の候補に3を含まない（`{5}`のみ）                          | `null` が返る                                                                                          |
+| 24  | pivotの候補が2つでない場合はXY-Wingとして検出しない                | 22と同じ配置だがpivot(0,0)の候補を`{1,2,9}`（3つ）に変更                          | `null` が返る                                                                                          |
+
+## findXYZWing（ウイング系）
+
+候補が3つ`{X,Y,Z}`の軸（pivot）マスと、pivotと同じユニットを共有する2つの翼（wing）マス
+（候補`{X,Z}`と`{Y,Z}`）から成る。pivotと両wingマスの**すべて**を見ているマスから候補`Z`を除去できる
+（pivot自身も候補`Z`を持つ点がXY-Wingとの違い）。
+
+| #   | ケース                                                             | 前提・入力                                                                 | 期待される結果                                                                                    |
+| --- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 25  | pivot・2つのwingマスからXYZ-Wingを検出し、pivotと両wingすべてを見ているマスから候補を除去する | pivot(0,0)候補`{1,2,3}`、wing(0,1)候補`{1,3}`（pivotと同じ行・ブロック）、wing(1,0)候補`{2,3}`（pivotと同じ列・ブロック）、pivot・両wingすべてを見ている(2,2)に候補`{3,9}`（同じブロック） | `technique: 'xyzWing'`、`eliminatedCandidates`に`{position:{row:2,col:2}, value:3}`が含まれる |
+| 26  | XYZ-Wingの条件を満たしても除去先の候補が残っていない場合はnullを返す（no-op） | 25と同じ配置だが、(2,2)の候補に3を含まない（`{9}`のみ）                          | `null` が返る                                                                                          |
+
 ## findHint（優先順位・memosによる実効候補の反映）
 
 `findHint` は 単一候補 → ◯◯内消去 → Naked Pair → Hidden Pair → Pointing Pair → Claiming → Naked Triple →
-Hidden Triple → Naked Quad → Hidden Quad → X-Wing → Swordfish → Jellyfish の順で最初に見つかった技法を返す。
+Hidden Triple → Naked Quad → Hidden Quad → X-Wing → Swordfish → Jellyfish → XY-Wing → XYZ-Wing の順で
+最初に見つかった技法を返す。
 個々の技法の正しさは上記の各 `find*` 関数のテストで担保されるため、ここでは「配線（技法が正しく連結されている）」
 と「非候補メモが実効候補に反映される」ことを重点的に検証する。
 
@@ -104,6 +128,6 @@ Hidden Triple → Naked Quad → Hidden Quad → X-Wing → Swordfish → Jellyf
 | 20  | 単一候補技法が存在しない場合、Naked Pairが検出され`kind: 'elimination'`で返る  | Naked Pairが存在するがNaked/Hidden Singleが存在しない盤面（`solution`は単一候補技法を無効化するダミー値）  | `kind: 'elimination'`、`technique: 'nakedPair'` のHintが返る             |
 | 21  | 非候補メモにより除去先が既にない場合、そのNaked Pairは返らず次の技法に進む（Issue #26のバグ修正） | 20と同じ盤面だが、`memos`でNaked Pairの除去対象マスの該当候補を`notCandidate`に設定済み                    | `technique: 'nakedPair'` のHintは返らない（同じヒントが繰り返し出ない）  |
 
-`findHint`のNaked Quad/Hidden Quad/Swordfish/Jellyfishへの接続は、他の技法（Pointing Pair以降）と同様に
-`??`演算子でチェーンする一行の変更であり、個々の技法の正しさは上記の各`find*`関数のテストで担保されるため、
-既存のX-Wing同様、専用の`findHint`レベルの配線テストは追加しない。
+`findHint`のNaked Quad/Hidden Quad/Swordfish/Jellyfish/XY-Wing/XYZ-Wingへの接続は、他の技法
+（Pointing Pair以降）と同様に`??`演算子でチェーンする一行の変更であり、個々の技法の正しさは上記の各
+`find*`関数のテストで担保されるため、既存のX-Wing同様、専用の`findHint`レベルの配線テストは追加しない。

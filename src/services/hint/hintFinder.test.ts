@@ -10,6 +10,8 @@ import {
   findPointingPair,
   findSwordfish,
   findXWing,
+  findXYWing,
+  findXYZWing,
   type MemoGrid,
 } from './hintFinder'
 
@@ -544,6 +546,112 @@ describe('hintFinder findJellyfish', () => {
     candidatesGrid[7][1] = [8]
 
     expect(findJellyfish(candidatesGrid, grid)).toBeNull()
+  })
+})
+
+describe('hintFinder findXYWing', () => {
+  it('pivot・2つのwingマスからXY-Wingを検出し、両wingを共に見ているマスから候補を除去する', () => {
+    const grid = filledGrid()
+    grid[0][0] = null
+    grid[0][4] = null
+    grid[4][0] = null
+    grid[4][4] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][0] = [1, 2]
+    candidatesGrid[0][4] = [1, 3]
+    candidatesGrid[4][0] = [2, 3]
+    candidatesGrid[4][4] = [3, 5]
+
+    const hint = findXYWing(candidatesGrid, grid)
+
+    expect(hint?.technique).toBe('xyWing')
+    expect(hint?.eliminatedCandidates).toEqual([{ position: { row: 4, col: 4 }, value: 3 }])
+    expect(hint?.cells).toEqual(
+      expect.arrayContaining([
+        { position: { row: 0, col: 0 }, role: 'cause' },
+        { position: { row: 0, col: 4 }, role: 'cause' },
+        { position: { row: 4, col: 0 }, role: 'cause' },
+        { position: { row: 4, col: 4 }, role: 'eliminated' },
+      ]),
+    )
+  })
+
+  it('XY-Wingの条件を満たしても除去先の候補が残っていない場合はnullを返す', () => {
+    const grid = filledGrid()
+    grid[0][0] = null
+    grid[0][4] = null
+    grid[4][0] = null
+    grid[4][4] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][0] = [1, 2]
+    candidatesGrid[0][4] = [1, 3]
+    candidatesGrid[4][0] = [2, 3]
+    candidatesGrid[4][4] = [5]
+
+    expect(findXYWing(candidatesGrid, grid)).toBeNull()
+  })
+
+  it('pivotの候補が2つでない場合はXY-Wingとして検出しない', () => {
+    const grid = filledGrid()
+    grid[0][0] = null
+    grid[0][4] = null
+    grid[4][0] = null
+    grid[4][4] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][0] = [1, 2, 9]
+    candidatesGrid[0][4] = [1, 3]
+    candidatesGrid[4][0] = [2, 3]
+    candidatesGrid[4][4] = [3, 5]
+
+    expect(findXYWing(candidatesGrid, grid)).toBeNull()
+  })
+})
+
+describe('hintFinder findXYZWing', () => {
+  it('pivot・2つのwingマスからXYZ-Wingを検出し、pivotと両wingすべてを見ているマスから候補を除去する', () => {
+    const grid = filledGrid()
+    grid[0][0] = null
+    grid[0][1] = null
+    grid[1][0] = null
+    grid[2][2] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][0] = [1, 2, 3]
+    candidatesGrid[0][1] = [1, 3]
+    candidatesGrid[1][0] = [2, 3]
+    candidatesGrid[2][2] = [3, 9]
+
+    const hint = findXYZWing(candidatesGrid, grid)
+
+    expect(hint?.technique).toBe('xyzWing')
+    expect(hint?.eliminatedCandidates).toEqual([{ position: { row: 2, col: 2 }, value: 3 }])
+    expect(hint?.cells).toEqual(
+      expect.arrayContaining([
+        { position: { row: 0, col: 0 }, role: 'cause' },
+        { position: { row: 0, col: 1 }, role: 'cause' },
+        { position: { row: 1, col: 0 }, role: 'cause' },
+        { position: { row: 2, col: 2 }, role: 'eliminated' },
+      ]),
+    )
+  })
+
+  it('XYZ-Wingの条件を満たしても除去先の候補が残っていない場合はnullを返す', () => {
+    const grid = filledGrid()
+    grid[0][0] = null
+    grid[0][1] = null
+    grid[1][0] = null
+    grid[2][2] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][0] = [1, 2, 3]
+    candidatesGrid[0][1] = [1, 3]
+    candidatesGrid[1][0] = [2, 3]
+    candidatesGrid[2][2] = [9]
+
+    expect(findXYZWing(candidatesGrid, grid)).toBeNull()
   })
 })
 
