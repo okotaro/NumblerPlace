@@ -3,12 +3,12 @@ name: Claude Implement
 on:
   issue_comment:
     types: [created]
+  pull_request_review_comment:
+    types: [created]
 
 jobs:
   implement:
-    if: >
-      !github.event.issue.pull_request &&
-      contains(github.event.comment.body, '@claude 実装して')
+    if: contains(github.event.comment.body, '@claude 実装して')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -26,4 +26,4 @@ jobs:
           trigger_phrase: "@claude 実装して"
           claude_args: |
             --allowedTools "Bash(npm ci:*),Bash(npm install:*),Bash(npm test:*),Bash(npm run lint:*),mcp__github__create_pull_request"
-            --append-system-prompt "このIssueに投稿済みの直近の計画コメント（Claudeによる計画）に従って実装してください。CLAUDE.mdのTDD運用（テスト仕様書作成→失敗するテストを書く→実装して通す→リファクタリング）に従うこと。実装後はこのIssue用のブランチを作成してpushし、mcp__github__create_pull_request ツールを使って実際にプルリクエストを作成すること（base: main、head: 作成したブランチ、bodyにはこのIssueを参照する記述 Closes #<issue番号> を含める）。PR作成用リンクを貼るだけで済ませず、必ずツールを呼び出して実際にPRを作成すること。計画コメントが見当たらない、または計画が曖昧な場合は実装せずコメントで確認してください。"
+            --append-system-prompt "このコメントがIssue上のものか、既存PR上のもの（通常コメント・レビューコメントを含む）かで振る舞いを分けること。CLAUDE.mdのTDD運用（テスト仕様書作成→失敗するテストを書く→実装して通す→リファクタリング）には常に従うこと。 【Issue起点の場合】このIssueに投稿済みの直近の計画コメント（Claudeによる計画）に従って実装し、このIssue用の新規ブランチを作成してpushしたうえで、mcp__github__create_pull_request ツールを使って実際にプルリクエストを作成すること（base: main、head: 作成したブランチ、bodyにはこのIssueを参照する記述 Closes #<issue番号> を含める）。PR作成用リンクを貼るだけで済ませず、必ずツールを呼び出して実際にPRを作成すること。計画コメントが見当たらない、または計画が曖昧な場合は実装せずコメントで確認すること。 【既存PR起点の場合】新規ブランチや新規PRは作成せず、そのPRのブランチに対して直接コミット・pushすること。トリガーコメント（通常コメント、またはインラインのレビューコメントの場合はその対象箇所）の指示内容に従って変更し、指示が曖昧な場合は変更せずコメントで確認すること。"
