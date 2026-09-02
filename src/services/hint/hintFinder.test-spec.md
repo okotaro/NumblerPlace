@@ -1,13 +1,13 @@
 # hintFinder.ts テスト仕様書
 
 対象: `src/services/hint/hintFinder.ts`
-関連仕様: `docs/spec.md` 15章、Issue #22、Issue #26、Issue #32
+関連仕様: `docs/spec.md` 15章、Issue #22、Issue #26、Issue #32、Issue #35
 
 盤面全体を9x9の `(number | null)[][]`（ユーザーの現在の入力値）と、対応する正解 `number[][]` で表す。
-対応技法は次の15技法。
+対応技法は次の17技法。
 
 - **値確定型**（`kind: 'value'`）: 単一候補（Naked Single）、◯◯内消去（Hidden Single）
-- **候補消去型**（`kind: 'elimination'`）: Naked Pair/Triple/Quad、Hidden Pair/Triple/Quad、Pointing Pair、Claiming、X-Wing/Swordfish/Jellyfish、XY-Wing/XYZ-Wing
+- **候補消去型**（`kind: 'elimination'`）: Naked Pair/Triple/Quad、Hidden Pair/Triple/Quad、Pointing Pair、Claiming、X-Wing/Swordfish/Jellyfish、XY-Wing/XYZ-Wing、Unique Rectangle Type1/Type2
 
 候補消去型の技法は、盤面の確定値だけでなくユーザーが入力した非候補メモ（3引数目 `memos`）も踏まえた
 「実効候補」に対して判定する。これにより、ユーザーがヒントに従って非候補メモを反映すると、
@@ -111,11 +111,35 @@
 | 25  | pivot・2つのwingマスからXYZ-Wingを検出し、pivotと両wingすべてを見ているマスから候補を除去する | pivot(0,0)候補`{1,2,3}`、wing(0,1)候補`{1,3}`（pivotと同じ行・ブロック）、wing(1,0)候補`{2,3}`（pivotと同じ列・ブロック）、pivot・両wingすべてを見ている(2,2)に候補`{3,9}`（同じブロック） | `technique: 'xyzWing'`、`eliminatedCandidates`に`{position:{row:2,col:2}, value:3}`が含まれる |
 | 26  | XYZ-Wingの条件を満たしても除去先の候補が残っていない場合はnullを返す（no-op） | 25と同じ配置だが、(2,2)の候補に3を含まない（`{9}`のみ）                          | `null` が返る                                                                                          |
 
+## findUniqueRectangleType1（ユニークレクタングル タイプ1）
+
+2行×2列で作る4隅（長方形）がちょうど2ブロックにまたがる（一方のブロック行帯・ブロック列帯のみを共有する）場合に対象とする。
+4隅のうち3マスの実効候補がちょうど同じ2値`{a,b}`で、残り1マスがその2値を含みつつ他の候補も持つ場合、
+一意な解を保つため残り1マスから候補`a`・`b`を除去できる。`findNakedSubset`等と同様、`candidatesGrid`と`grid`を直接引数に取る。
+
+| #   | ケース                                                                       | 前提・入力                                                                                    | 期待される結果                                                                                                  |
+| --- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| 27  | 4隅のうち3マスの候補が同じ2値`{a,b}`、残り1マスが`{a,b}`＋余分な候補を持つ場合に検出し、残り1マスから`a`・`b`を除去する | 2行×2列（ちょうど2ブロックにまたがる配置）の4隅のうち3マスの候補が`{2,5}`、残り1マス（(3,1)）の候補が`{2,5,9}` | `technique: 'uniqueRectangleType1'`、`cells`に3マスが`role:'cause'`、残り1マスが`role:'eliminated'`で含まれ、`eliminatedCandidates`に`{position:{row:3,col:1}, value:2}`・`{value:5}`が含まれる |
+| 28  | 残り1マスの候補が3マス共通の2値の片方しか含まない場合は除去先が確定せずnullを返す（no-op） | 27と同じ配置だが、残り1マスの候補を`{2,9}`（`5`を含まない）に変更                                       | `null` が返る                                                                                                          |
+| 29  | 4隅がちょうど2ブロックにまたがらない（同一ブロック内に収まる）場合は検出しない       | 27と同じ候補パターンだが、4隅を同一ブロック内の2行×2列（例: (0,0)/(0,1)/(1,0)/(1,1)）に配置             | `null` が返る                                                                                                          |
+
+## findUniqueRectangleType2（ユニークレクタングル タイプ2）
+
+findUniqueRectangleType1と同じ「ちょうど2ブロックにまたがる4隅」を対象とする。4隅のうち2マス（floor）の実効候補が
+ちょうど`{a,b}`、残り2マス（roof）の実効候補がちょうど`{a,b,c}`（同じ余分な候補`c`）の場合、roofの2マスを共に
+見ている（同じ行・列・ブロックのいずれかを共有する）マスから候補`c`を除去できる。
+
+| #   | ケース                                                                       | 前提・入力                                                                                    | 期待される結果                                                                                                  |
+| --- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| 30  | floor2マスの候補が`{a,b}`、roof2マスの候補が共通の余分な候補`c`を含む`{a,b,c}`の場合に検出し、roof2マスを共に見ているマスから`c`を除去する | 2行×2列（ちょうど2ブロックにまたがる配置）でfloor2マス（同じ列）の候補が`{2,5}`、roof2マス（同じ列）の候補が`{2,5,7}`、roofの2マスを共に見ている別の1マスの候補に`7`を含む | `technique: 'uniqueRectangleType2'`、`eliminatedCandidates`に該当マスの`{value:7}`が含まれる |
+| 31  | 除去先の候補が残っていない場合はnullを返す（no-op）                                 | 30と同じ配置だが、roofの2マスを共に見ているマスに候補`7`を持つマスがない                                | `null` が返る                                                                                                          |
+| 32  | 4隅がちょうど2ブロックにまたがらない（同一ブロック内に収まる）場合は検出しない       | 30と同じ候補パターンだが、4隅を同一ブロック内の2行×2列に配置                                             | `null` が返る                                                                                                          |
+
 ## findHint（優先順位・memosによる実効候補の反映）
 
 `findHint` は 単一候補 → ◯◯内消去 → Naked Pair → Hidden Pair → Pointing Pair → Claiming → Naked Triple →
-Hidden Triple → Naked Quad → Hidden Quad → X-Wing → Swordfish → Jellyfish → XY-Wing → XYZ-Wing の順で
-最初に見つかった技法を返す。
+Hidden Triple → Naked Quad → Hidden Quad → X-Wing → Swordfish → Jellyfish → XY-Wing → XYZ-Wing →
+Unique Rectangle Type1 → Unique Rectangle Type2 の順で最初に見つかった技法を返す。
 個々の技法の正しさは上記の各 `find*` 関数のテストで担保されるため、ここでは「配線（技法が正しく連結されている）」
 と「非候補メモが実効候補に反映される」ことを重点的に検証する。
 
@@ -128,6 +152,6 @@ Hidden Triple → Naked Quad → Hidden Quad → X-Wing → Swordfish → Jellyf
 | 20  | 単一候補技法が存在しない場合、Naked Pairが検出され`kind: 'elimination'`で返る  | Naked Pairが存在するがNaked/Hidden Singleが存在しない盤面（`solution`は単一候補技法を無効化するダミー値）  | `kind: 'elimination'`、`technique: 'nakedPair'` のHintが返る             |
 | 21  | 非候補メモにより除去先が既にない場合、そのNaked Pairは返らず次の技法に進む（Issue #26のバグ修正） | 20と同じ盤面だが、`memos`でNaked Pairの除去対象マスの該当候補を`notCandidate`に設定済み                    | `technique: 'nakedPair'` のHintは返らない（同じヒントが繰り返し出ない）  |
 
-`findHint`のNaked Quad/Hidden Quad/Swordfish/Jellyfish/XY-Wing/XYZ-Wingへの接続は、他の技法
-（Pointing Pair以降）と同様に`??`演算子でチェーンする一行の変更であり、個々の技法の正しさは上記の各
-`find*`関数のテストで担保されるため、既存のX-Wing同様、専用の`findHint`レベルの配線テストは追加しない。
+`findHint`のNaked Quad/Hidden Quad/Swordfish/Jellyfish/XY-Wing/XYZ-Wing/Unique Rectangle Type1/Type2への
+接続は、他の技法（Pointing Pair以降）と同様に`??`演算子でチェーンする一行の変更であり、個々の技法の正しさは
+上記の各`find*`関数のテストで担保されるため、既存のX-Wing同様、専用の`findHint`レベルの配線テストは追加しない。
