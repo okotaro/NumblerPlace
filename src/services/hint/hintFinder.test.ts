@@ -9,6 +9,8 @@ import {
   findNakedSubset,
   findPointingPair,
   findSwordfish,
+  findUniqueRectangleType1,
+  findUniqueRectangleType2,
   findXWing,
   findXYWing,
   findXYZWing,
@@ -652,6 +654,136 @@ describe('hintFinder findXYZWing', () => {
     candidatesGrid[2][2] = [9]
 
     expect(findXYZWing(candidatesGrid, grid)).toBeNull()
+  })
+})
+
+describe('hintFinder findUniqueRectangleType1', () => {
+  it('4隅のうち3マスの候補が同じ2値{a,b}、残り1マスが{a,b}＋余分な候補を持つ場合に検出し、残り1マスからa・bを除去する', () => {
+    const grid = filledGrid()
+    grid[0][0] = null
+    grid[0][1] = null
+    grid[3][0] = null
+    grid[3][1] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][0] = [2, 5]
+    candidatesGrid[0][1] = [2, 5]
+    candidatesGrid[3][0] = [2, 5]
+    candidatesGrid[3][1] = [2, 5, 9]
+
+    const hint = findUniqueRectangleType1(candidatesGrid, grid)
+
+    expect(hint?.technique).toBe('uniqueRectangleType1')
+    expect(hint?.cells).toEqual(
+      expect.arrayContaining([
+        { position: { row: 0, col: 0 }, role: 'cause' },
+        { position: { row: 0, col: 1 }, role: 'cause' },
+        { position: { row: 3, col: 0 }, role: 'cause' },
+        { position: { row: 3, col: 1 }, role: 'eliminated' },
+      ]),
+    )
+    expect(hint?.eliminatedCandidates).toEqual(
+      expect.arrayContaining([
+        { position: { row: 3, col: 1 }, value: 2 },
+        { position: { row: 3, col: 1 }, value: 5 },
+      ]),
+    )
+  })
+
+  it('残り1マスの候補が3マス共通の2値の片方しか含まない場合は除去先が確定せずnullを返す', () => {
+    const grid = filledGrid()
+    grid[0][0] = null
+    grid[0][1] = null
+    grid[3][0] = null
+    grid[3][1] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][0] = [2, 5]
+    candidatesGrid[0][1] = [2, 5]
+    candidatesGrid[3][0] = [2, 5]
+    candidatesGrid[3][1] = [2, 9]
+
+    expect(findUniqueRectangleType1(candidatesGrid, grid)).toBeNull()
+  })
+
+  it('4隅がちょうど2ブロックにまたがらない（同一ブロック内に収まる）場合は検出しない', () => {
+    const grid = filledGrid()
+    grid[0][0] = null
+    grid[0][1] = null
+    grid[1][0] = null
+    grid[1][1] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][0] = [2, 5]
+    candidatesGrid[0][1] = [2, 5]
+    candidatesGrid[1][0] = [2, 5]
+    candidatesGrid[1][1] = [2, 5, 9]
+
+    expect(findUniqueRectangleType1(candidatesGrid, grid)).toBeNull()
+  })
+})
+
+describe('hintFinder findUniqueRectangleType2', () => {
+  it('floor2マスの候補が{a,b}、roof2マスの候補が共通の余分な候補cを含む{a,b,c}の場合に検出し、roof2マスを共に見ているマスからcを除去する', () => {
+    const grid = filledGrid()
+    grid[0][0] = null
+    grid[0][3] = null
+    grid[1][0] = null
+    grid[1][3] = null
+    grid[4][3] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][0] = [2, 5]
+    candidatesGrid[1][0] = [2, 5]
+    candidatesGrid[0][3] = [2, 5, 7]
+    candidatesGrid[1][3] = [2, 5, 7]
+    candidatesGrid[4][3] = [7, 9]
+
+    const hint = findUniqueRectangleType2(candidatesGrid, grid)
+
+    expect(hint?.technique).toBe('uniqueRectangleType2')
+    expect(hint?.eliminatedCandidates).toEqual([{ position: { row: 4, col: 3 }, value: 7 }])
+    expect(hint?.cells).toEqual(
+      expect.arrayContaining([
+        { position: { row: 0, col: 0 }, role: 'cause' },
+        { position: { row: 0, col: 3 }, role: 'cause' },
+        { position: { row: 1, col: 0 }, role: 'cause' },
+        { position: { row: 1, col: 3 }, role: 'cause' },
+        { position: { row: 4, col: 3 }, role: 'eliminated' },
+      ]),
+    )
+  })
+
+  it('除去先の候補が残っていない場合はnullを返す', () => {
+    const grid = filledGrid()
+    grid[0][0] = null
+    grid[0][3] = null
+    grid[1][0] = null
+    grid[1][3] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][0] = [2, 5]
+    candidatesGrid[1][0] = [2, 5]
+    candidatesGrid[0][3] = [2, 5, 7]
+    candidatesGrid[1][3] = [2, 5, 7]
+
+    expect(findUniqueRectangleType2(candidatesGrid, grid)).toBeNull()
+  })
+
+  it('4隅がちょうど2ブロックにまたがらない（同一ブロック内に収まる）場合は検出しない', () => {
+    const grid = filledGrid()
+    grid[0][0] = null
+    grid[0][1] = null
+    grid[1][0] = null
+    grid[1][1] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][0] = [2, 5]
+    candidatesGrid[1][0] = [2, 5]
+    candidatesGrid[0][1] = [2, 5, 7]
+    candidatesGrid[1][1] = [2, 5, 7]
+
+    expect(findUniqueRectangleType2(candidatesGrid, grid)).toBeNull()
   })
 })
 

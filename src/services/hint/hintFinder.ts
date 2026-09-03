@@ -23,6 +23,8 @@ export type HintTechnique =
   | 'jellyfish'
   | 'xyWing'
   | 'xyzWing'
+  | 'uniqueRectangleType1'
+  | 'uniqueRectangleType2'
 
 export type HintCell = { position: Pos; role: 'cause' | 'eliminated' }
 export type EliminatedCandidate = { position: Pos; value: number }
@@ -618,6 +620,120 @@ export function findXYZWing(candidatesGrid: number[][][], grid: Grid): Eliminati
   return null
 }
 
+function isUniqueRectangleSpan(r1: number, r2: number, c1: number, c2: number): boolean {
+  const sameRowBlock = Math.floor(r1 / 3) === Math.floor(r2 / 3)
+  const sameColBlock = Math.floor(c1 / 3) === Math.floor(c2 / 3)
+  return sameRowBlock !== sameColBlock
+}
+
+function uniqueRectangleCorners(grid: Grid): Pos[][] {
+  const rectangles: Pos[][] = []
+  for (let r1 = 0; r1 < SIZE; r1++) {
+    for (let r2 = r1 + 1; r2 < SIZE; r2++) {
+      for (let c1 = 0; c1 < SIZE; c1++) {
+        for (let c2 = c1 + 1; c2 < SIZE; c2++) {
+          if (!isUniqueRectangleSpan(r1, r2, c1, c2)) continue
+          const cells: Pos[] = [
+            { row: r1, col: c1 },
+            { row: r1, col: c2 },
+            { row: r2, col: c1 },
+            { row: r2, col: c2 },
+          ]
+          if (cells.some(({ row, col }) => grid[row][col] !== null)) continue
+          rectangles.push(cells)
+        }
+      }
+    }
+  }
+  return rectangles
+}
+
+export function findUniqueRectangleType1(candidatesGrid: number[][][], grid: Grid): EliminationHint | null {
+  for (const cells of uniqueRectangleCorners(grid)) {
+    const candidateSets = cells.map(({ row, col }) => candidatesGrid[row][col])
+
+    for (let i = 0; i < 4; i++) {
+      const others = candidateSets.filter((_, idx) => idx !== i)
+      if (others.some((c) => c.length !== 2)) continue
+      const [a, b] = others[0]
+      if (others.some((c) => !(c.includes(a) && c.includes(b)))) continue
+
+      const extra = candidateSets[i]
+      if (!(extra.length > 2 && extra.includes(a) && extra.includes(b))) continue
+
+      const extraCell = cells[i]
+      const causeCells = cells.filter((_, idx) => idx !== i)
+      const eliminatedCandidates: EliminatedCandidate[] = [
+        { position: extraCell, value: a },
+        { position: extraCell, value: b },
+      ]
+
+      return {
+        kind: 'elimination',
+        technique: 'uniqueRectangleType1',
+        techniqueLabel: 'ユニークレクタングル タイプ1（Unique Rectangle Type 1）',
+        reasonText: `4マスの長方形のうち3マスの候補が${a}・${b}のみで、残り1マスも同じ2値を含んでいます。一意な解を保つため、残り1マスから候補${a}・${b}を除去できます。${NEXT_HINT_GUIDE}`,
+        cells: buildHintCells(causeCells, eliminatedCandidates),
+        eliminatedCandidates,
+      }
+    }
+  }
+  return null
+}
+
+const UNIQUE_RECTANGLE_FLOOR_INDEX_PAIRS: [number, number][] = [
+  [0, 1],
+  [0, 2],
+  [0, 3],
+  [1, 2],
+  [1, 3],
+  [2, 3],
+]
+
+export function findUniqueRectangleType2(candidatesGrid: number[][][], grid: Grid): EliminationHint | null {
+  const allCells = emptyCells(grid)
+
+  for (const cells of uniqueRectangleCorners(grid)) {
+    const candidateSets = cells.map(({ row, col }) => candidatesGrid[row][col])
+
+    for (const floorIdx of UNIQUE_RECTANGLE_FLOOR_INDEX_PAIRS) {
+      const roofIdx = [0, 1, 2, 3].filter((idx) => !floorIdx.includes(idx))
+      const floorSets = floorIdx.map((idx) => candidateSets[idx])
+      if (floorSets.some((c) => c.length !== 2)) continue
+      const [a, b] = floorSets[0]
+      if (floorSets.some((c) => !(c.includes(a) && c.includes(b)))) continue
+
+      const roofSets = roofIdx.map((idx) => candidateSets[idx])
+      if (roofSets.some((c) => c.length !== 3 || !(c.includes(a) && c.includes(b)))) continue
+
+      const roofExtras = roofSets.map((c) => c.find((v) => v !== a && v !== b))
+      const value = roofExtras[0]
+      if (value === undefined || roofExtras[1] !== value) continue
+
+      const roofCells = roofIdx.map((idx) => cells[idx])
+      const eliminatedCandidates: EliminatedCandidate[] = allCells
+        .filter(
+          (pos) =>
+            !cells.some((c) => samePos(c, pos)) &&
+            roofCells.every((roofCell) => cellsSee(pos, roofCell)) &&
+            candidatesGrid[pos.row][pos.col].includes(value),
+        )
+        .map((pos) => ({ position: pos, value }))
+      if (eliminatedCandidates.length === 0) continue
+
+      return {
+        kind: 'elimination',
+        technique: 'uniqueRectangleType2',
+        techniqueLabel: 'ユニークレクタングル タイプ2（Unique Rectangle Type 2）',
+        reasonText: `4マスの長方形のうち2マスの候補が${a}・${b}のみで、残り2マスの候補が${a}・${b}・${value}です。一意な解を保つため、残り2マスを共に見ているマスから候補${value}を除去できます。${NEXT_HINT_GUIDE}`,
+        cells: buildHintCells(cells, eliminatedCandidates),
+        eliminatedCandidates,
+      }
+    }
+  }
+  return null
+}
+
 export function findHint(userValues: Grid, solution: number[][], memos?: MemoGrid): Hint | null {
   const nakedSingle = findNakedSingle(userValues, solution)
   if (nakedSingle !== null) return nakedSingle
@@ -640,6 +756,8 @@ export function findHint(userValues: Grid, solution: number[][], memos?: MemoGri
     findSwordfish(candidatesGrid, userValues) ??
     findJellyfish(candidatesGrid, userValues) ??
     findXYWing(candidatesGrid, userValues) ??
-    findXYZWing(candidatesGrid, userValues)
+    findXYZWing(candidatesGrid, userValues) ??
+    findUniqueRectangleType1(candidatesGrid, userValues) ??
+    findUniqueRectangleType2(candidatesGrid, userValues)
   )
 }
