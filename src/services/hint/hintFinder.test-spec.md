@@ -1,13 +1,13 @@
 # hintFinder.ts テスト仕様書
 
 対象: `src/services/hint/hintFinder.ts`
-関連仕様: `docs/spec.md` 15章、Issue #22、Issue #26、Issue #32、Issue #35
+関連仕様: `docs/spec.md` 15章、Issue #22、Issue #26、Issue #32、Issue #35、Issue #36
 
 盤面全体を9x9の `(number | null)[][]`（ユーザーの現在の入力値）と、対応する正解 `number[][]` で表す。
-対応技法は次の17技法。
+対応技法は次の19技法。
 
 - **値確定型**（`kind: 'value'`）: 単一候補（Naked Single）、◯◯内消去（Hidden Single）
-- **候補消去型**（`kind: 'elimination'`）: Naked Pair/Triple/Quad、Hidden Pair/Triple/Quad、Pointing Pair、Claiming、X-Wing/Swordfish/Jellyfish、XY-Wing/XYZ-Wing、Unique Rectangle Type1/Type2
+- **候補消去型**（`kind: 'elimination'`）: Naked Pair/Triple/Quad、Hidden Pair/Triple/Quad、Pointing Pair、Claiming、X-Wing/Swordfish/Jellyfish、Skyscraper、Two-String Kite、XY-Wing/XYZ-Wing、Unique Rectangle Type1/Type2
 
 候補消去型の技法は、盤面の確定値だけでなくユーザーが入力した非候補メモ（3引数目 `memos`）も踏まえた
 「実効候補」に対して判定する。これにより、ユーザーがヒントに従って非候補メモを反映すると、
@@ -88,6 +88,31 @@
 | 15c | 4行で候補が同じ4列にのみ現れる場合、その4列の他マスから除去する（Jellyfish） | 行A・B・C・Dでそれぞれ値8の候補が列1・3・5・8のうち2〜4列に現れ、和集合がちょうど列1・3・5・8の4列になる。列1の対象行以外の1マスにも候補8がある | `findJellyfish`が`technique: 'jellyfish'`のヒントを返し、`eliminatedCandidates`に`{value:8}`が含まれる |
 | 15d | Jellyfishの条件を満たしても除去先の候補が残っていない場合はnullを返す（no-op） | 同じ条件だが、列1・3・5・8の対象行以外に候補8を持つマスがない                                       | `findJellyfish`が`null`を返す                                                          |
 
+## findSkyscraper（スカイスクレイパー）
+
+同種の2本のライン（行同士または列同士）でそれぞれ実効候補がちょうど2マスに絞られ、一方の値（共通ライン。行版なら列、
+列版なら行）を共有する場合、共有しない側の2マス（先端）を`cellsSee`で共に見ている空マスから当該値を除去できる。
+2本のラインの候補位置の集合が完全に一致する場合（共有ラインが2つとも一致＝実質X-Wingと同じ配置）は対象外とする。
+`findFish`と同様、`candidatesGrid`と`grid`を直接引数に取る。
+
+| #   | ケース                                                             | 前提・入力                                                                 | 期待される結果                                                                                    |
+| --- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 33  | 2行で候補が共通の列を共有する場合（行版）に検出し、両先端を共に見ているマスから除去する | 行0の候補が列0・6、行4の候補が列0・7（共通列0）。両先端（0,6）・（4,7）を共に見ている(5,6)に候補7 | `technique: 'skyscraper'`、`cells`に4マスが`role:'cause'`で含まれ、`eliminatedCandidates`に`{position:{row:5,col:6}, value:7}`が含まれる |
+| 34  | 2列で候補が共通の行を共有する場合（列版）に検出し、両先端を共に見ているマスから除去する | 列6の候補が行0・4、列7の候補が行0・5（共通行0）。両先端（4,6）・（5,7）を共に見ている(3,8)に候補7 | `technique: 'skyscraper'`、`eliminatedCandidates`に`{position:{row:3,col:8}, value:7}`が含まれる |
+| 35  | 2本のラインの候補位置が完全に一致する場合（実質X-Wing）は検出しない | 行0・行3の候補がどちらも列2・5で完全一致                                          | `null` が返る                                                                                          |
+| 36  | Skyscraperの条件を満たしても除去先の候補が残っていない場合はnullを返す（no-op） | 33と同じ配置だが、(5,6)の候補に7を含まない                                        | `null` が返る                                                                                          |
+
+## findTwoStringKite（ツーストリングカイト）
+
+1本の行と1本の列でそれぞれ実効候補がちょうど2マスに絞られ、行側の1マスと列側の1マスが同じブロック内にある場合、
+行・列それぞれの残り1マス（先端）を`cellsSee`で共に見ている空マスから当該値を除去できる。
+
+| #   | ケース                                                             | 前提・入力                                                                 | 期待される結果                                                                                    |
+| --- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 37  | 行の候補1マスと列の候補1マスが同じブロックで接続される場合に検出し、両先端を共に見ているマスから除去する | 行0の候補が列1・7、列2の候補が行1・6。(0,1)と(1,2)が同じブロック。両先端（0,7）・（6,2）を共に見ている(6,7)に候補4 | `technique: 'twoStringKite'`、`cells`に4マスが`role:'cause'`で含まれ、`eliminatedCandidates`に`{position:{row:6,col:7}, value:4}`が含まれる |
+| 38  | 行・列の候補マスがどの組み合わせでも同じブロックに収まらない場合は検出しない | 行0の候補が列1・7、列4の候補が行4・7（どのペアもブロックが一致しない）             | `null` が返る                                                                                          |
+| 39  | Two-String Kiteの条件を満たしても除去先の候補が残っていない場合はnullを返す（no-op） | 37と同じ行・列の配置だが、(6,7)を確定値として埋め除去先が存在しない                 | `null` が返る                                                                                          |
+
 ## findXYWing（ウイング系）
 
 候補が2つ`{X,Y}`の軸（pivot）マスと、pivotと同じユニット（行・列・ブロック）を共有する2つの翼（wing）マス
@@ -138,8 +163,8 @@ findUniqueRectangleType1と同じ「ちょうど2ブロックにまたがる4隅
 ## findHint（優先順位・memosによる実効候補の反映）
 
 `findHint` は 単一候補 → ◯◯内消去 → Naked Pair → Hidden Pair → Pointing Pair → Claiming → Naked Triple →
-Hidden Triple → Naked Quad → Hidden Quad → X-Wing → Swordfish → Jellyfish → XY-Wing → XYZ-Wing →
-Unique Rectangle Type1 → Unique Rectangle Type2 の順で最初に見つかった技法を返す。
+Hidden Triple → Naked Quad → Hidden Quad → X-Wing → Swordfish → Jellyfish → Skyscraper → Two-String Kite →
+XY-Wing → XYZ-Wing → Unique Rectangle Type1 → Unique Rectangle Type2 の順で最初に見つかった技法を返す。
 個々の技法の正しさは上記の各 `find*` 関数のテストで担保されるため、ここでは「配線（技法が正しく連結されている）」
 と「非候補メモが実効候補に反映される」ことを重点的に検証する。
 
@@ -152,6 +177,7 @@ Unique Rectangle Type1 → Unique Rectangle Type2 の順で最初に見つかっ
 | 20  | 単一候補技法が存在しない場合、Naked Pairが検出され`kind: 'elimination'`で返る  | Naked Pairが存在するがNaked/Hidden Singleが存在しない盤面（`solution`は単一候補技法を無効化するダミー値）  | `kind: 'elimination'`、`technique: 'nakedPair'` のHintが返る             |
 | 21  | 非候補メモにより除去先が既にない場合、そのNaked Pairは返らず次の技法に進む（Issue #26のバグ修正） | 20と同じ盤面だが、`memos`でNaked Pairの除去対象マスの該当候補を`notCandidate`に設定済み                    | `technique: 'nakedPair'` のHintは返らない（同じヒントが繰り返し出ない）  |
 
-`findHint`のNaked Quad/Hidden Quad/Swordfish/Jellyfish/XY-Wing/XYZ-Wing/Unique Rectangle Type1/Type2への
-接続は、他の技法（Pointing Pair以降）と同様に`??`演算子でチェーンする一行の変更であり、個々の技法の正しさは
-上記の各`find*`関数のテストで担保されるため、既存のX-Wing同様、専用の`findHint`レベルの配線テストは追加しない。
+`findHint`のNaked Quad/Hidden Quad/Swordfish/Jellyfish/Skyscraper/Two-String Kite/XY-Wing/XYZ-Wing/
+Unique Rectangle Type1/Type2への接続は、他の技法（Pointing Pair以降）と同様に`??`演算子でチェーンする
+一行の変更であり、個々の技法の正しさは上記の各`find*`関数のテストで担保されるため、既存のX-Wing同様、
+専用の`findHint`レベルの配線テストは追加しない。
