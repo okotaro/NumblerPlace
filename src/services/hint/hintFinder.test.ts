@@ -8,7 +8,9 @@ import {
   findNakedSingle,
   findNakedSubset,
   findPointingPair,
+  findSkyscraper,
   findSwordfish,
+  findTwoStringKite,
   findUniqueRectangleType1,
   findUniqueRectangleType2,
   findXWing,
@@ -548,6 +550,166 @@ describe('hintFinder findJellyfish', () => {
     candidatesGrid[7][1] = [8]
 
     expect(findJellyfish(candidatesGrid, grid)).toBeNull()
+  })
+})
+
+describe('hintFinder findSkyscraper', () => {
+  it('2行で候補が共通の列を共有する場合（行版）に検出し、両先端を共に見ているマスから除去する', () => {
+    const grid = filledGrid()
+    grid[0][0] = null
+    grid[0][6] = null
+    grid[4][0] = null
+    grid[4][7] = null
+    grid[5][6] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][0] = [7]
+    candidatesGrid[0][6] = [7]
+    candidatesGrid[4][0] = [7]
+    candidatesGrid[4][7] = [7]
+    candidatesGrid[5][6] = [7]
+
+    const hint = findSkyscraper(candidatesGrid, grid)
+
+    expect(hint?.technique).toBe('skyscraper')
+    expect(hint?.eliminatedCandidates).toEqual([{ position: { row: 5, col: 6 }, value: 7 }])
+    expect(hint?.cells).toEqual(
+      expect.arrayContaining([
+        { position: { row: 0, col: 0 }, role: 'cause' },
+        { position: { row: 0, col: 6 }, role: 'cause' },
+        { position: { row: 4, col: 0 }, role: 'cause' },
+        { position: { row: 4, col: 7 }, role: 'cause' },
+        { position: { row: 5, col: 6 }, role: 'eliminated' },
+      ]),
+    )
+  })
+
+  it('2列で候補が共通の行を共有する場合（列版）に検出し、両先端を共に見ているマスから除去する', () => {
+    const grid = filledGrid()
+    grid[0][6] = null
+    grid[0][7] = null
+    grid[4][6] = null
+    grid[5][7] = null
+    grid[3][8] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][6] = [7]
+    candidatesGrid[0][7] = [7]
+    candidatesGrid[4][6] = [7]
+    candidatesGrid[5][7] = [7]
+    candidatesGrid[3][8] = [7]
+
+    const hint = findSkyscraper(candidatesGrid, grid)
+
+    expect(hint?.technique).toBe('skyscraper')
+    expect(hint?.eliminatedCandidates).toEqual([{ position: { row: 3, col: 8 }, value: 7 }])
+    expect(hint?.cells).toEqual(
+      expect.arrayContaining([
+        { position: { row: 0, col: 6 }, role: 'cause' },
+        { position: { row: 0, col: 7 }, role: 'cause' },
+        { position: { row: 4, col: 6 }, role: 'cause' },
+        { position: { row: 5, col: 7 }, role: 'cause' },
+        { position: { row: 3, col: 8 }, role: 'eliminated' },
+      ]),
+    )
+  })
+
+  it('2本のラインの候補位置が完全に一致する場合（実質X-Wing）は検出しない', () => {
+    const grid = filledGrid()
+    grid[0][2] = null
+    grid[0][5] = null
+    grid[3][2] = null
+    grid[3][5] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][2] = [7]
+    candidatesGrid[0][5] = [7]
+    candidatesGrid[3][2] = [7]
+    candidatesGrid[3][5] = [7]
+
+    expect(findSkyscraper(candidatesGrid, grid)).toBeNull()
+  })
+
+  it('Skyscraperの条件を満たしても除去先の候補が残っていない場合はnullを返す', () => {
+    const grid = filledGrid()
+    grid[0][0] = null
+    grid[0][6] = null
+    grid[4][0] = null
+    grid[4][7] = null
+    grid[5][6] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][0] = [7]
+    candidatesGrid[0][6] = [7]
+    candidatesGrid[4][0] = [7]
+    candidatesGrid[4][7] = [7]
+    candidatesGrid[5][6] = [3]
+
+    expect(findSkyscraper(candidatesGrid, grid)).toBeNull()
+  })
+})
+
+describe('hintFinder findTwoStringKite', () => {
+  it('行の候補1マスと列の候補1マスが同じブロックで接続される場合に検出し、両先端を共に見ているマスから除去する', () => {
+    const grid = filledGrid()
+    grid[0][1] = null
+    grid[0][7] = null
+    grid[1][2] = null
+    grid[6][2] = null
+    grid[6][7] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][1] = [4]
+    candidatesGrid[0][7] = [4]
+    candidatesGrid[1][2] = [4]
+    candidatesGrid[6][2] = [4]
+    candidatesGrid[6][7] = [4]
+
+    const hint = findTwoStringKite(candidatesGrid, grid)
+
+    expect(hint?.technique).toBe('twoStringKite')
+    expect(hint?.eliminatedCandidates).toEqual([{ position: { row: 6, col: 7 }, value: 4 }])
+    expect(hint?.cells).toEqual(
+      expect.arrayContaining([
+        { position: { row: 0, col: 1 }, role: 'cause' },
+        { position: { row: 0, col: 7 }, role: 'cause' },
+        { position: { row: 1, col: 2 }, role: 'cause' },
+        { position: { row: 6, col: 2 }, role: 'cause' },
+        { position: { row: 6, col: 7 }, role: 'eliminated' },
+      ]),
+    )
+  })
+
+  it('行・列の候補マスがどの組み合わせでも同じブロックに収まらない場合は検出しない', () => {
+    const grid = filledGrid()
+    grid[0][1] = null
+    grid[0][7] = null
+    grid[4][4] = null
+    grid[7][4] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][1] = [4]
+    candidatesGrid[0][7] = [4]
+    candidatesGrid[4][4] = [4]
+    candidatesGrid[7][4] = [4]
+
+    expect(findTwoStringKite(candidatesGrid, grid)).toBeNull()
+  })
+
+  it('Two-String Kiteの条件を満たしても除去先の候補が残っていない場合はnullを返す', () => {
+    const grid = filledGrid()
+    grid[0][1] = null
+    grid[0][7] = null
+    grid[1][2] = null
+    grid[6][2] = null
+
+    const candidatesGrid = emptyCandidatesGrid()
+    candidatesGrid[0][1] = [4]
+    candidatesGrid[0][7] = [4]
+    candidatesGrid[1][2] = [4]
+    candidatesGrid[6][2] = [4]
+
+    expect(findTwoStringKite(candidatesGrid, grid)).toBeNull()
   })
 })
 

@@ -21,6 +21,8 @@ export type HintTechnique =
   | 'xWing'
   | 'swordfish'
   | 'jellyfish'
+  | 'skyscraper'
+  | 'twoStringKite'
   | 'xyWing'
   | 'xyzWing'
   | 'uniqueRectangleType1'
@@ -498,9 +500,13 @@ function samePos(a: Pos, b: Pos): boolean {
   return a.row === b.row && a.col === b.col
 }
 
+function sameBlock(a: Pos, b: Pos): boolean {
+  return blockIndexOf(a.row, a.col) === blockIndexOf(b.row, b.col)
+}
+
 function cellsSee(a: Pos, b: Pos): boolean {
   if (samePos(a, b)) return false
-  return a.row === b.row || a.col === b.col || blockIndexOf(a.row, a.col) === blockIndexOf(b.row, b.col)
+  return a.row === b.row || a.col === b.col || sameBlock(a, b)
 }
 
 function emptyCells(grid: Grid): Pos[] {
@@ -511,6 +517,142 @@ function emptyCells(grid: Grid): Pos[] {
     }
   }
   return cells
+}
+
+export function findSkyscraper(candidatesGrid: number[][][], grid: Grid): EliminationHint | null {
+  const lineTypes: UnitType[] = ['row', 'column']
+
+  for (const type of lineTypes) {
+    const lineLabel = type === 'row' ? '行' : '列'
+    const crossLabel = type === 'row' ? '列' : '行'
+
+    const toCell = (lineIndex: number, cross: number): Pos =>
+      type === 'row' ? { row: lineIndex, col: cross } : { row: cross, col: lineIndex }
+
+    for (let value = 1; value <= SIZE; value++) {
+      const positionsByIndex: number[][] = []
+      for (let i = 0; i < SIZE; i++) {
+        const cells = unitCells(type, i).filter(
+          ({ row, col }) => grid[row][col] === null && candidatesGrid[row][col].includes(value),
+        )
+        positionsByIndex[i] = cells.map((c) => (type === 'row' ? c.col : c.row))
+      }
+
+      const candidateLines: number[] = []
+      for (let i = 0; i < SIZE; i++) {
+        if (positionsByIndex[i].length === 2) candidateLines.push(i)
+      }
+
+      for (let a = 0; a < candidateLines.length; a++) {
+        for (let b = a + 1; b < candidateLines.length; b++) {
+          const i1 = candidateLines[a]
+          const i2 = candidateLines[b]
+          const [p1a, p1b] = positionsByIndex[i1]
+          const [p2a, p2b] = positionsByIndex[i2]
+
+          const shared = [p1a, p1b].filter((p) => p === p2a || p === p2b)
+          if (shared.length !== 1) continue
+          const common = shared[0]
+          const tip1 = p1a === common ? p1b : p1a
+          const tip2 = p2a === common ? p2b : p2a
+
+          const tip1Cell = toCell(i1, tip1)
+          const tip2Cell = toCell(i2, tip2)
+          const causeCells: Pos[] = [toCell(i1, common), tip1Cell, toCell(i2, common), tip2Cell]
+
+          const eliminatedCandidates: EliminatedCandidate[] = emptyCells(grid)
+            .filter(
+              (c) =>
+                !causeCells.some((cc) => samePos(cc, c)) &&
+                cellsSee(c, tip1Cell) &&
+                cellsSee(c, tip2Cell) &&
+                candidatesGrid[c.row][c.col].includes(value),
+            )
+            .map((c) => ({ position: c, value }))
+          if (eliminatedCandidates.length === 0) continue
+
+          const commonLabel = `${crossLabel}${common + 1}`
+          const line1Label = `${lineLabel}${i1 + 1}`
+          const line2Label = `${lineLabel}${i2 + 1}`
+          return {
+            kind: 'elimination',
+            technique: 'skyscraper',
+            techniqueLabel: 'スカイスクレイパー（Skyscraper）',
+            reasonText: `${line1Label}と${line2Label}は、${value}の候補が共通の${commonLabel}でつながっているため、それぞれの残りのマスを共に見ているマスから${value}を候補から除去できます。${NEXT_HINT_GUIDE}`,
+            cells: buildHintCells(causeCells, eliminatedCandidates),
+            eliminatedCandidates,
+          }
+        }
+      }
+    }
+  }
+  return null
+}
+
+export function findTwoStringKite(candidatesGrid: number[][][], grid: Grid): EliminationHint | null {
+  for (let value = 1; value <= SIZE; value++) {
+    const rowLines: { index: number; cols: [number, number] }[] = []
+    for (let row = 0; row < SIZE; row++) {
+      const cols = unitCells('row', row)
+        .filter(({ row: r, col }) => grid[r][col] === null && candidatesGrid[r][col].includes(value))
+        .map((c) => c.col)
+      if (cols.length === 2) rowLines.push({ index: row, cols: [cols[0], cols[1]] })
+    }
+
+    const colLines: { index: number; rows: [number, number] }[] = []
+    for (let col = 0; col < SIZE; col++) {
+      const rows = unitCells('column', col)
+        .filter(({ row, col: c }) => grid[row][c] === null && candidatesGrid[row][c].includes(value))
+        .map((c) => c.row)
+      if (rows.length === 2) colLines.push({ index: col, rows: [rows[0], rows[1]] })
+    }
+
+    for (const { index: rowIndex, cols } of rowLines) {
+      for (const { index: colIndex, rows } of colLines) {
+        for (const rowLinkIdx of [0, 1] as const) {
+          const rowLinkCol = cols[rowLinkIdx]
+          const rowTipCol = cols[1 - rowLinkIdx]
+
+          for (const colLinkIdx of [0, 1] as const) {
+            const colLinkRow = rows[colLinkIdx]
+            const colTipRow = rows[1 - colLinkIdx]
+
+            const linkRowCell: Pos = { row: rowIndex, col: rowLinkCol }
+            const linkColCell: Pos = { row: colLinkRow, col: colIndex }
+            if (samePos(linkRowCell, linkColCell)) continue
+            if (!sameBlock(linkRowCell, linkColCell)) continue
+
+            const tipRowCell: Pos = { row: rowIndex, col: rowTipCol }
+            const tipColCell: Pos = { row: colTipRow, col: colIndex }
+            if (samePos(tipRowCell, tipColCell)) continue
+
+            const causeCells: Pos[] = [linkRowCell, tipRowCell, linkColCell, tipColCell]
+
+            const eliminatedCandidates: EliminatedCandidate[] = emptyCells(grid)
+              .filter(
+                (c) =>
+                  !causeCells.some((cc) => samePos(cc, c)) &&
+                  cellsSee(c, tipRowCell) &&
+                  cellsSee(c, tipColCell) &&
+                  candidatesGrid[c.row][c.col].includes(value),
+              )
+              .map((c) => ({ position: c, value }))
+            if (eliminatedCandidates.length === 0) continue
+
+            return {
+              kind: 'elimination',
+              technique: 'twoStringKite',
+              techniqueLabel: 'ツーストリングカイト（Two-String Kite）',
+              reasonText: `行${rowIndex + 1}と列${colIndex + 1}は、${value}の候補が同じブロック内でつながっているため、行・列それぞれの残りのマスを共に見ているマスから${value}を候補から除去できます。${NEXT_HINT_GUIDE}`,
+              cells: buildHintCells(causeCells, eliminatedCandidates),
+              eliminatedCandidates,
+            }
+          }
+        }
+      }
+    }
+  }
+  return null
 }
 
 export function findXYWing(candidatesGrid: number[][][], grid: Grid): EliminationHint | null {
@@ -755,6 +897,8 @@ export function findHint(userValues: Grid, solution: number[][], memos?: MemoGri
     findXWing(candidatesGrid, userValues) ??
     findSwordfish(candidatesGrid, userValues) ??
     findJellyfish(candidatesGrid, userValues) ??
+    findSkyscraper(candidatesGrid, userValues) ??
+    findTwoStringKite(candidatesGrid, userValues) ??
     findXYWing(candidatesGrid, userValues) ??
     findXYZWing(candidatesGrid, userValues) ??
     findUniqueRectangleType1(candidatesGrid, userValues) ??
